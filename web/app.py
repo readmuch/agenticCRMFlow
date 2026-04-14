@@ -10,6 +10,8 @@ import io
 from pathlib import Path
 from typing import AsyncGenerator
 
+from contextlib import asynccontextmanager
+
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -21,14 +23,21 @@ load_dotenv(Path(__file__).parent.parent / ".env", override=True)
 # src/ 디렉토리를 sys.path에 추가
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from db.database import init_db
 from tools import data_tools as dt
 from agents.orchestrator import OrchestratorAgent
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
 
 # data_tools._load를 공개 래퍼로 노출
 def _load_json(filename: str):
     return dt._load(filename)
 
-app = FastAPI(title="CRM 멀티에이전트 시스템")
+app = FastAPI(title="CRM 멀티에이전트 시스템", lifespan=lifespan)
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 # 현재 실행 중인 분석 고객 ID 집합 (중복 방지)
@@ -89,7 +98,7 @@ def load_customer_results(customer_id: str) -> dict:
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     customers = dt.get_all_customers()
-    personas = dt._load("personas.json")
+    personas = dt.get_all_personas()
     analyzed_ids = {p.get("customer_id") for p in personas if p.get("customer_id")}
 
     return templates.TemplateResponse(
