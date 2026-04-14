@@ -72,6 +72,11 @@ MODEL_REGISTRY: dict[str, dict] = {
         "provider": "openrouter",
         "description": "OpenRouter 무료 — rate limit 있음",
     },
+    "minimax/minimax-m2.5:free": {
+        "label": "MiniMax M2.5 (무료)",
+        "provider": "openrouter",
+        "description": "OpenRouter 무료 — rate limit 있음",
+    },
 }
 
 _model_setting: dict[str, str] = {"model": "claude-opus-4-6"}
