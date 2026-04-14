@@ -99,7 +99,7 @@ def load_customer_results(customer_id: str) -> dict:
 async def dashboard(request: Request):
     customers = dt.get_all_customers()
     personas = dt.get_all_personas()
-    analyzed_ids = {p.get("customer_id") for p in personas if p.get("customer_id")}
+    analyzed_ids = [p.get("customer_id") for p in personas if p.get("customer_id")]
 
     return templates.TemplateResponse(
         "index.html",
