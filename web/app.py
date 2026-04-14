@@ -123,9 +123,9 @@ async def dashboard(request: Request):
 
     try:
         return templates.TemplateResponse(
+            request,
             "index.html",
             {
-                "request": request,
                 "customers": customers,
                 "analyzed_ids": analyzed_ids,
             },
@@ -145,9 +145,9 @@ async def customer_page(request: Request, customer_id: str):
         return HTMLResponse("<h1>고객을 찾을 수 없습니다.</h1>", status_code=404)
 
     return templates.TemplateResponse(
+        request,
         "customer.html",
         {
-            "request": request,
             "customer": customer,
             "customer_id": customer_id,
         },
