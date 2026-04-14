@@ -36,6 +36,7 @@ from agents.orchestrator import OrchestratorAgent
 async def lifespan(app: FastAPI):
     init_db()
     dt.seed_sales_notes_if_empty()
+    dt.seed_personas_if_empty()
     yield
 
 # data_tools._load를 공개 래퍼로 노출

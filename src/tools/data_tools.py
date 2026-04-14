@@ -90,6 +90,21 @@ def seed_sales_notes_if_empty() -> None:
         pass
 
 
+def seed_personas_if_empty() -> None:
+    """data/personas.json → DB 초기 이전 (DB가 비어있을 때만 실행)"""
+    try:
+        from db.database import Persona
+        with _session() as session:
+            if session.query(Persona).count() == 0:
+                for persona in _load("personas.json"):
+                    cid = persona.get("customer_id")
+                    if cid:
+                        session.add(Persona(customer_id=cid, data=persona))
+                session.commit()
+    except Exception:
+        pass
+
+
 def get_action_plans(customer_id: str) -> list:
     plans = _load("action_plans.json")
     result = [p for p in plans if p["customer_id"] == customer_id]
