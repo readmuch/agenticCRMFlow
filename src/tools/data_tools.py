@@ -40,17 +40,31 @@ def get_all_customers() -> list:
 
 
 def get_sales_notes(customer_id: str) -> list:
-    """영업 노트 조회 (DB 우선, 실패 시 JSON fallback)"""
+    """영업 노트 조회 (DB 우선, 빈 결과면 JSON에서 Client_Name으로 보완)"""
     try:
         from db.database import SalesNote
         with _session() as session:
             rows = session.query(SalesNote).filter_by(customer_id=customer_id).all()
             notes = [row.data for row in rows]
-            return sorted(notes, key=lambda x: x.get("date", ""), reverse=True)
+            if notes:
+                return sorted(notes, key=lambda x: x.get("Activity_Date") or x.get("date", ""), reverse=True)
     except Exception:
-        notes = _load("sales_notes.json")
-        result = [n for n in notes if n["customer_id"] == customer_id]
-        return sorted(result, key=lambda x: x["date"], reverse=True)
+        pass
+
+    # JSON fallback: old schema(customer_id) 또는 new schema(Client_Name) 모두 지원
+    customer = get_customer(customer_id)
+    company_name = customer.get("company_name") if customer else None
+
+    all_notes = _load("sales_notes.json")
+    result = []
+    for n in all_notes:
+        if n.get("customer_id") == customer_id:
+            result.append(n)
+        elif company_name and n.get("Client_Name") == company_name:
+            result.append(n)
+
+    date_key = lambda x: x.get("Activity_Date") or x.get("date", "")
+    return sorted(result, key=date_key, reverse=True)
 
 
 def add_sales_note(customer_id: str, note_data: dict) -> dict:
@@ -74,18 +88,43 @@ def add_sales_note(customer_id: str, note_data: dict) -> dict:
 
 
 def seed_sales_notes_if_empty() -> None:
-    """JSON → DB 초기 이전 (DB가 비어있을 때만 실행)"""
+    """JSON → DB 초기 이전 (DB가 비어있을 때만 실행).
+    구 스키마(customer_id/note_id 보유)와 새 스키마(Client_Name 기반) 모두 지원."""
     try:
         from db.database import SalesNote
         with _session() as session:
-            if session.query(SalesNote).count() == 0:
-                for note in _load("sales_notes.json"):
+            if session.query(SalesNote).count() > 0:
+                return
+
+            # company_name → customer_id 역 매핑
+            customers = _load("customers.json")
+            name_to_id = {c["company_name"]: c["customer_id"] for c in customers}
+
+            # 고객별 노트 카운터 (note_id 생성용)
+            cust_counter: dict[str, int] = {}
+
+            for note in _load("sales_notes.json"):
+                if "customer_id" in note and "note_id" in note:
+                    # 구 스키마
                     session.add(SalesNote(
                         note_id=note["note_id"],
                         customer_id=note["customer_id"],
                         data=note,
                     ))
-                session.commit()
+                elif "Client_Name" in note:
+                    # 새 스키마: Client_Name으로 customer_id 조회
+                    customer_id = name_to_id.get(note["Client_Name"])
+                    if not customer_id:
+                        continue
+                    cust_counter[customer_id] = cust_counter.get(customer_id, 0) + 1
+                    note_id = f"SN-{customer_id}-{cust_counter[customer_id]:03d}"
+                    note_with_ids = {**note, "note_id": note_id, "customer_id": customer_id}
+                    session.add(SalesNote(
+                        note_id=note_id,
+                        customer_id=customer_id,
+                        data=note_with_ids,
+                    ))
+            session.commit()
     except Exception:
         pass
 
@@ -260,14 +299,11 @@ def get_recent_notes_with_weights(customer_id: str, analysis_date: str = None, m
     else:
         cutoff = today - timedelta(days=months * 30)
 
-    # 구 스키마 노트 (customer_id 기반)
-    old_notes = get_sales_notes(customer_id)
-    # 새 스키마 노트 (전체 JSON, customer_id 필드 없음)
-    all_raw = _load("sales_notes.json")
-    new_notes = [n for n in all_raw if "customer_id" not in n]
+    # 해당 고객의 모든 노트 (구/새 스키마 통합, DB → JSON fallback)
+    all_customer_notes = get_sales_notes(customer_id)
 
     combined = []
-    for note in old_notes + new_notes:
+    for note in all_customer_notes:
         date_str = note.get("Activity_Date") or note.get("date", "")
         try:
             note_date = datetime.strptime(date_str, "%Y-%m-%d")

@@ -27,11 +27,11 @@
       "email": "sjlee@nps.or.kr",
       "phone": "063-713-5000"
     },
-    "investment_mandate": ["국내주식 패시브", "국내주식 액티브", "배당주"],
+    "investment_mandate": ["국내주식 패시브", "국내주식 액티브", "배당주", "ESG"],
     "benchmark": "KOSPI",
     "relationship_since": "2017-06-15",
     "tier": "S",
-    "assigned_salesperson": "김영민"
+    "assigned_salesperson": "정다은"
   },
   {
     "customer_id": "C003",
@@ -40,14 +40,150 @@
     "aum_billion_krw": 12000,
     "contact": {
       "name": "최동현",
-      "title": "리서치팀 수석매니저",
+      "title": "리서치팀 수석",
       "email": "dhchoi@samsungam.co.kr",
       "phone": "02-2020-3040"
     },
-    "investment_mandate": ["국내주식 액티브", "테마펀드", "ESG"],
+    "investment_mandate": ["국내주식 액티브", "테마펀드", "ESG", "AI/반도체"],
     "benchmark": "KOSPI200",
     "relationship_since": "2020-09-01",
     "tier": "A",
-    "assigned_salesperson": "이지연"
+    "assigned_salesperson": "이서연"
+  },
+  {
+    "customer_id": "C004",
+    "company_name": "동양자산운용",
+    "company_type": "자산운용사",
+    "aum_billion_krw": 15000,
+    "contact": {
+      "name": "최재원",
+      "title": "Buy-side 선임 애널리스트",
+      "email": "",
+      "phone": ""
+    },
+    "investment_mandate": ["국내주식 액티브", "방산"],
+    "benchmark": "KOSPI200",
+    "relationship_since": "2026-01-18",
+    "tier": "B",
+    "assigned_salesperson": "이서연"
+  },
+  {
+    "customer_id": "C005",
+    "company_name": "미래에셋자산운용",
+    "company_type": "자산운용사",
+    "aum_billion_krw": 350000,
+    "contact": {
+      "name": "박지훈",
+      "title": "펀드매니저 / 팀장",
+      "email": "",
+      "phone": ""
+    },
+    "investment_mandate": ["국내주식 액티브", "반도체", "글로벌주식"],
+    "benchmark": "KOSPI200",
+    "relationship_since": "2026-01-25",
+    "tier": "S",
+    "assigned_salesperson": "김영민"
+  },
+  {
+    "customer_id": "C006",
+    "company_name": "타임폴리오자산운용",
+    "company_type": "헤지펀드",
+    "aum_billion_krw": 20000,
+    "contact": {
+      "name": "강현우",
+      "title": "포트폴리오 매니저 / 이사",
+      "email": "",
+      "phone": ""
+    },
+    "investment_mandate": ["롱숏 전략", "2차전지", "퀀트"],
+    "benchmark": "KOSPI200",
+    "relationship_since": "2026-02-25",
+    "tier": "A",
+    "assigned_salesperson": "김영민"
+  },
+  {
+    "customer_id": "C007",
+    "company_name": "삼성생명",
+    "company_type": "보험사",
+    "aum_billion_krw": 300000,
+    "contact": {
+      "name": "윤성호",
+      "title": "대체투자 차장",
+      "email": "",
+      "phone": ""
+    },
+    "investment_mandate": ["대체투자", "리츠/부동산", "배당"],
+    "benchmark": "KOSPI",
+    "relationship_since": "2026-03-06",
+    "tier": "S",
+    "assigned_salesperson": "한지수"
+  },
+  {
+    "customer_id": "C008",
+    "company_name": "KB자산운용",
+    "company_type": "자산운용사",
+    "aum_billion_krw": 80000,
+    "contact": {
+      "name": "송민재",
+      "title": "퀀트 전략가 / 매니저",
+      "email": "",
+      "phone": ""
+    },
+    "investment_mandate": ["국내주식 액티브", "퀀트/팩터", "스마트베타"],
+    "benchmark": "KOSPI200",
+    "relationship_since": "2026-03-18",
+    "tier": "A",
+    "assigned_salesperson": "정다은"
+  },
+  {
+    "customer_id": "C009",
+    "company_name": "한국투자신탁운용",
+    "company_type": "자산운용사",
+    "aum_billion_krw": 100000,
+    "contact": {
+      "name": "임채원",
+      "title": "글로벌 주식 팀장",
+      "email": "",
+      "phone": ""
+    },
+    "investment_mandate": ["글로벌주식", "국내주식 액티브", "AI/테크"],
+    "benchmark": "KOSPI200",
+    "relationship_since": "2026-03-28",
+    "tier": "A",
+    "assigned_salesperson": "김영민"
+  },
+  {
+    "customer_id": "C010",
+    "company_name": "사학연금",
+    "company_type": "연기금",
+    "aum_billion_krw": 20000,
+    "contact": {
+      "name": "조하은",
+      "title": "국내주식 운용역 / 대리",
+      "email": "",
+      "phone": ""
+    },
+    "investment_mandate": ["국내주식 액티브", "배당주", "가치주"],
+    "benchmark": "KOSPI",
+    "relationship_since": "2026-04-05",
+    "tier": "A",
+    "assigned_salesperson": "한지수"
+  },
+  {
+    "customer_id": "C011",
+    "company_name": "신한자산운용",
+    "company_type": "자산운용사",
+    "aum_billion_krw": 40000,
+    "contact": {
+      "name": "문지영",
+      "title": "바이오/헬스케어 선임 애널리스트",
+      "email": "",
+      "phone": ""
+    },
+    "investment_mandate": ["국내주식 액티브", "바이오/헬스케어", "테마펀드"],
+    "benchmark": "KOSPI200",
+    "relationship_since": "2026-04-12",
+    "tier": "B",
+    "assigned_salesperson": "이서연"
   }
 ]
