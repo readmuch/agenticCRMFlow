@@ -38,6 +38,8 @@ from agents.qc_agent import QCAgent
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import logging as _logging
+    _logging.basicConfig(level=_logging.INFO)
     init_db()
     dt.seed_customers_if_empty()
     dt.seed_sales_notes_if_empty()

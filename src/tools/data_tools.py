@@ -36,9 +36,43 @@ def _session():
 def seed_customers_if_empty() -> None:
     """data/customers.json → DB 동기화 (시작 시 항상 upsert).
     JSON이 source of truth이므로 DB에 없는 항목은 추가, 있는 항목은 최신화."""
-    logger.info("seed_customers_if_empty: starting customer upsert sync")
+    import os
+    from sqlalchemy import text
+    from sqlalchemy import inspect as sa_inspect
+
+    db_url = os.environ.get("DATABASE_URL", "")
+    logger.info("seed_customers_if_empty: starting. DATABASE_URL prefix: %s",
+                db_url[:30] if db_url else "(not set)")
+
     try:
-        from db.database import Customer, flag_modified
+        from db.database import engine, Customer, flag_modified
+    except Exception:
+        logger.error("seed_customers_if_empty: failed to import engine", exc_info=True)
+        return
+
+    # 1. DB 연결 확인
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        logger.info("seed_customers_if_empty: DB connection OK")
+    except Exception:
+        logger.error("seed_customers_if_empty: DB connection FAILED", exc_info=True)
+        return
+
+    # 2. customers 테이블 존재 확인
+    try:
+        tables = sa_inspect(engine).get_table_names()
+        logger.info("seed_customers_if_empty: existing tables: %s", tables)
+        if "customers" not in tables:
+            logger.warning("seed_customers_if_empty: 'customers' table missing — running init_db()")
+            from db.database import init_db
+            init_db()
+    except Exception:
+        logger.error("seed_customers_if_empty: table inspection failed", exc_info=True)
+        return
+
+    # 3. upsert (항상 최신 JSON 반영)
+    try:
         with _session() as session:
             customers = _load("customers.json")
             logger.info("seed_customers_if_empty: loaded %d customers from JSON", len(customers))
@@ -57,8 +91,8 @@ def seed_customers_if_empty() -> None:
                     added += 1
             session.commit()
             logger.info("seed_customers_if_empty: done — added=%d updated=%d", added, updated)
-    except Exception as exc:
-        logger.error("seed_customers_if_empty: failed (%s)", exc, exc_info=True)
+    except Exception:
+        logger.error("seed_customers_if_empty: upsert failed", exc_info=True)
 
 
 def get_customer(customer_id: str) -> dict | None:
