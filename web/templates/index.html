@@ -111,6 +111,15 @@
             {% endfor %}
           </div>
 
+          <!-- 영업 노트 현황 -->
+          {% set ninfo = notes_info.get(customer.customer_id, {}) %}
+          {% if ninfo.get('count', 0) > 0 %}
+          <div class="mb-2 text-muted small">
+            <i class="bi bi-journal-text me-1"></i>영업 노트 {{ ninfo.count }}건
+            {% if ninfo.last_date %}<span class="ms-2 opacity-75">· 최근 {{ ninfo.last_date }}</span>{% endif %}
+          </div>
+          {% endif %}
+
           <!-- 분석 상태 -->
           <div class="mb-3">
             {% if is_analyzed %}

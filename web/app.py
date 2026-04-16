@@ -205,6 +205,16 @@ async def dashboard(request: Request):
     except Exception:
         analyzed_ids = []
 
+    notes_info: dict[str, dict] = {}
+    for c in customers:
+        cid = c.get("customer_id")
+        if cid:
+            notes = dt.get_sales_notes(cid)
+            notes_info[cid] = {
+                "count": len(notes),
+                "last_date": (notes[0].get("Activity_Date") or notes[0].get("date", "")) if notes else "",
+            }
+
     try:
         return templates.TemplateResponse(
             request,
@@ -212,6 +222,7 @@ async def dashboard(request: Request):
             {
                 "customers": json.loads(json.dumps(customers)),
                 "analyzed_ids": json.loads(json.dumps(analyzed_ids)),
+                "notes_info": json.loads(json.dumps(notes_info)),
             },
         )
     except Exception as e:
