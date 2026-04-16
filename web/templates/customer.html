@@ -331,7 +331,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-const CUSTOMER_ID = "{{ customer_id }}";
+const CUSTOMER_ID   = "{{ customer_id }}";
+const COMPANY_NAME  = "{{ customer.company_name }}";
 
 // ─── 유틸리티 ─────────────────────────────────────────────────────────────────
 function escHtml(s) {
@@ -457,14 +458,23 @@ function renderPersona(p) {
   const el = document.getElementById('content-persona');
   const st = document.getElementById('status-persona');
   if (!p) {
-    el.innerHTML = '<div class="text-muted small">페르소나 데이터가 없습니다.</div>';
+    el.innerHTML = '<div class="text-muted small py-2"><i class="bi bi-clock me-1"></i>아직 페르소나 분석이 실행되지 않았습니다.</div>';
     return;
   }
 
-  // 마지막 업데이트 날짜 표시
+  // 분석 완료 상태 표시
   if (p.updated_at) {
-    st.innerHTML = `<span class="text-muted"><i class="bi bi-calendar-check me-1"></i>마지막 업데이트: ${escHtml(p.updated_at)}</span>`;
+    st.innerHTML = `<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>분석 완료 — ${escHtml(p.updated_at)}</span>`;
   }
+
+  // 기관명 헤더
+  const clientHeader = `
+    <div class="d-flex align-items-center gap-2 mb-3 p-2 bg-light rounded">
+      <i class="bi bi-building text-info fs-5"></i>
+      <span class="fw-bold">${escHtml(COMPANY_NAME)}</span>
+      <span class="text-muted small ms-1">페르소나 분석 결과</span>
+      ${p.updated_at ? `<span class="badge bg-light text-muted border ms-auto" style="font-size:.7rem">${escHtml(p.updated_at)}</span>` : ''}
+    </div>`;
 
   // 새 스키마 (preferred_sectors 존재)
   if (p.preferred_sectors !== undefined) {
@@ -488,7 +498,7 @@ function renderPersona(p) {
     ).join('');
     const style = p.preferred_analysis_style || {};
 
-    el.innerHTML = `
+    el.innerHTML = clientHeader + `
       <div class="row g-4">
         <div class="col-md-6">
           <h6 class="fw-bold text-success mb-2"><i class="bi bi-graph-up me-1"></i>선호 섹터</h6>
@@ -536,7 +546,7 @@ function renderPersona(p) {
     const avoids = (p.avoid_topics || []).map(a =>
       `<li class="mb-1"><i class="bi bi-x-circle text-danger me-1"></i>${escHtml(a)}</li>`).join('');
 
-    el.innerHTML = `
+    el.innerHTML = clientHeader + `
       <div class="row g-4">
         <div class="col-md-4">
           <h6 class="fw-bold text-primary mb-2"><i class="bi bi-speedometer2 me-1"></i>관계 점수</h6>
