@@ -439,15 +439,18 @@ class ModelSelect(BaseModel):
 
 class SalesNoteCreate(BaseModel):
     customer_id: str
-    date: str
-    author: str
-    channel: str
-    title: str
-    content: str
-    sentiment: str
-    key_concerns: list[str] = []
-    expressed_interests: list[str] = []
-    follow_up_required: bool = False
+    Sales_Name: str
+    Activity_Date: str
+    Client_Type: str
+    Client_Name: str
+    Contact_Role: str = ""
+    Contact_Name: str = ""
+    Sector: str = ""
+    Activity_Type: str
+    Activity_Log: str
+    Customer_Feedback: str = ""
+    Action_Point: str = ""
+    Language: str = "KR"
 
 
 @app.get("/api/models")
@@ -479,11 +482,15 @@ async def api_get_sales_notes(customer_id: str):
 
 @app.post("/api/sales-notes")
 async def api_add_sales_note(body: SalesNoteCreate):
+    from fastapi import HTTPException
     customer = dt.get_customer(body.customer_id)
     if not customer:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="고객을 찾을 수 없습니다.")
-    return dt.add_sales_note(body.customer_id, body.model_dump())
+    note_data = body.model_dump()
+    # Sales_ID 자동 생성 (기존 노트 수 기준)
+    existing = dt.get_sales_notes(body.customer_id)
+    note_data["Sales_ID"] = f"S{len(existing) + 1:02d}"
+    return dt.add_sales_note(body.customer_id, note_data)
 
 
 @app.get("/api/customers")

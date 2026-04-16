@@ -272,49 +272,71 @@
       <form id="addNoteForm" onsubmit="submitNote(event)">
         <div class="modal-body">
           <div class="row g-3">
+            <!-- 행 1: 날짜 / 영업담당자 / 활동 유형 -->
             <div class="col-md-4">
-              <label class="form-label small fw-semibold">날짜</label>
-              <input type="date" class="form-control form-control-sm" id="noteDate" required>
+              <label class="form-label small fw-semibold">활동 일자 <span class="text-danger">*</span></label>
+              <input type="date" class="form-control form-control-sm" id="noteActivityDate" required>
             </div>
             <div class="col-md-4">
-              <label class="form-label small fw-semibold">작성자</label>
-              <input type="text" class="form-control form-control-sm" id="noteAuthor" placeholder="이름" required>
+              <label class="form-label small fw-semibold">영업 담당자 <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" id="noteSalesName" placeholder="예) 김영민 / 부장" required>
             </div>
             <div class="col-md-4">
-              <label class="form-label small fw-semibold">채널</label>
-              <select class="form-select form-select-sm" id="noteChannel">
+              <label class="form-label small fw-semibold">활동 유형 <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" id="noteActivityType">
                 <option>대면미팅</option><option>전화</option><option>이메일</option>
-                <option>카카오톡</option><option>기타</option>
+                <option>채팅</option><option>화상미팅</option><option>컨퍼런스콜</option><option>기타</option>
               </select>
             </div>
-            <div class="col-12">
-              <label class="form-label small fw-semibold">제목</label>
-              <input type="text" class="form-control form-control-sm" id="noteTitle" placeholder="미팅 또는 통화 제목" required>
+            <!-- 행 2: 기관명(읽기전용) / 기관 유형 / 담당자 직책 / 담당자 이름 -->
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">기관명</label>
+              <input type="text" class="form-control form-control-sm bg-light" id="noteClientName" readonly>
             </div>
-            <div class="col-12">
-              <label class="form-label small fw-semibold">내용</label>
-              <textarea class="form-control form-control-sm" id="noteContent" rows="4" placeholder="미팅/통화 내용을 상세히 기록하세요" required></textarea>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label small fw-semibold">감정 평가</label>
-              <select class="form-select form-select-sm" id="noteSentiment">
-                <option>매우 긍정</option><option>긍정</option>
-                <option selected>중립</option><option>부정</option><option>매우 부정</option>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">기관 유형 <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" id="noteClientType">
+                <option>운용사</option><option>연기금</option><option>보험사</option>
+                <option>은행/저축은행</option><option>증권사</option><option>기타</option>
               </select>
             </div>
-            <div class="col-md-4">
-              <label class="form-label small fw-semibold">주요 우려사항 <small class="text-muted">(쉼표 구분)</small></label>
-              <input type="text" class="form-control form-control-sm" id="noteKeyConcerns" placeholder="우려사항1, 우려사항2">
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">담당자 직책</label>
+              <input type="text" class="form-control form-control-sm" id="noteContactRole" placeholder="예) 펀드매니저">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">담당자 이름</label>
+              <input type="text" class="form-control form-control-sm" id="noteContactName" placeholder="예) 박지훈 / 팀장">
+            </div>
+            <!-- 행 3: 섹터 / 언어 -->
+            <div class="col-md-8">
+              <label class="form-label small fw-semibold">섹터</label>
+              <input type="text" class="form-control form-control-sm" id="noteSector" placeholder="예) 반도체, 방산, 바이오">
             </div>
             <div class="col-md-4">
-              <label class="form-label small fw-semibold">관심 표현사항 <small class="text-muted">(쉼표 구분)</small></label>
-              <input type="text" class="form-control form-control-sm" id="noteInterests" placeholder="관심사1, 관심사2">
+              <label class="form-label small fw-semibold">언어</label>
+              <select class="form-select form-select-sm" id="noteLanguage">
+                <option value="KR" selected>한국어 (KR)</option>
+                <option value="EN">English (EN)</option>
+              </select>
             </div>
+            <!-- 활동 내용 -->
             <div class="col-12">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="noteFollowUp">
-                <label class="form-check-label small" for="noteFollowUp">후속 조치 필요</label>
-              </div>
+              <label class="form-label small fw-semibold">활동 내용 (Activity Log) <span class="text-danger">*</span></label>
+              <textarea class="form-control form-control-sm" id="noteActivityLog" rows="3"
+                placeholder="[활동유형 - 섹터] 미팅/통화 내용을 상세히 기록하세요" required></textarea>
+            </div>
+            <!-- 고객 피드백 -->
+            <div class="col-12">
+              <label class="form-label small fw-semibold">고객 피드백 (Customer Feedback)</label>
+              <textarea class="form-control form-control-sm" id="noteCustomerFeedback" rows="2"
+                placeholder="[기관명] 고객이 표현한 요청, 반응, 의견을 기록하세요"></textarea>
+            </div>
+            <!-- 후속 조치 -->
+            <div class="col-12">
+              <label class="form-label small fw-semibold">후속 조치 (Action Point)</label>
+              <textarea class="form-control form-control-sm" id="noteActionPoint" rows="2"
+                placeholder="미팅 후 실행할 구체적 후속 조치를 기록하세요"></textarea>
             </div>
           </div>
         </div>
@@ -864,18 +886,20 @@ async function submitNote(e) {
   const btn = document.getElementById('noteSubmitBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>저장 중...';
-  const splitTags = v => v.split(',').map(s => s.trim()).filter(Boolean);
   const body = {
-    customer_id:         CUSTOMER_ID,
-    date:                document.getElementById('noteDate').value,
-    author:              document.getElementById('noteAuthor').value,
-    channel:             document.getElementById('noteChannel').value,
-    title:               document.getElementById('noteTitle').value,
-    content:             document.getElementById('noteContent').value,
-    sentiment:           document.getElementById('noteSentiment').value,
-    key_concerns:        splitTags(document.getElementById('noteKeyConcerns').value),
-    expressed_interests: splitTags(document.getElementById('noteInterests').value),
-    follow_up_required:  document.getElementById('noteFollowUp').checked,
+    customer_id:       CUSTOMER_ID,
+    Sales_Name:        document.getElementById('noteSalesName').value,
+    Activity_Date:     document.getElementById('noteActivityDate').value,
+    Client_Type:       document.getElementById('noteClientType').value,
+    Client_Name:       document.getElementById('noteClientName').value,
+    Contact_Role:      document.getElementById('noteContactRole').value,
+    Contact_Name:      document.getElementById('noteContactName').value,
+    Sector:            document.getElementById('noteSector').value,
+    Activity_Type:     document.getElementById('noteActivityType').value,
+    Activity_Log:      document.getElementById('noteActivityLog').value,
+    Customer_Feedback: document.getElementById('noteCustomerFeedback').value,
+    Action_Point:      document.getElementById('noteActionPoint').value,
+    Language:          document.getElementById('noteLanguage').value,
   };
   try {
     const res = await fetch('/api/sales-notes', {
@@ -884,6 +908,7 @@ async function submitNote(e) {
     if (!res.ok) throw new Error((await res.json()).detail || '서버 오류');
     bootstrap.Modal.getInstance(document.getElementById('addNoteModal')).hide();
     document.getElementById('addNoteForm').reset();
+    document.getElementById('noteClientName').value = COMPANY_NAME;
     await loadSalesNotes();
   } catch(err) {
     alert('저장 실패: ' + err.message);
@@ -895,7 +920,14 @@ async function submitNote(e) {
 
 // ─── 페이지 초기화 ────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function() {
-  document.getElementById('noteDate').value = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('noteActivityDate').value = today;
+  document.getElementById('noteClientName').value = COMPANY_NAME;
+  // 모달 열릴 때마다 Client_Name·날짜 재세팅
+  document.getElementById('addNoteModal').addEventListener('show.bs.modal', function() {
+    document.getElementById('noteActivityDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('noteClientName').value = COMPANY_NAME;
+  });
   loadSalesNotes();
   // 기존 저장 결과 로드
   fetch('/api/customer/' + CUSTOMER_ID)
