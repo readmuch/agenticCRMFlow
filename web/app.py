@@ -3,12 +3,14 @@ FastAPI 웹 애플리케이션 - CRM 멀티에이전트 시스템
 """
 
 import json
+import os
 import queue
 import sys
 import threading
 import io
 from pathlib import Path
 from typing import AsyncGenerator
+from urllib.parse import urlparse
 
 from contextlib import asynccontextmanager
 
@@ -52,12 +54,66 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[lifespan] init_db() FAILED: {e}", flush=True)
         import traceback; traceback.print_exc()
+    # ── customers.json → PostgreSQL (psycopg2 직접 삽입) ─────────────────────
+    print("[lifespan] seed_customers START", flush=True)
     try:
-        dt.seed_customers_if_empty()
-        print("[lifespan] seed_customers OK", flush=True)
+        import psycopg2
+
+        db_url = os.environ.get("DATABASE_URL", "")
+        print(f"[lifespan] DATABASE_URL present: {bool(db_url)}", flush=True)
+
+        if not db_url:
+            # 로컬 SQLite 모드: SQLAlchemy 기반 시드 사용
+            dt.seed_customers_if_empty()
+            print("[lifespan] seed_customers OK (SQLite fallback)", flush=True)
+        else:
+            # Railway PostgreSQL: psycopg2로 직접 삽입
+            customers_path = Path(__file__).parent.parent / "data" / "customers.json"
+            print(f"[lifespan] customers.json path: {customers_path} exists={customers_path.exists()}", flush=True)
+
+            if not customers_path.exists():
+                print("[lifespan] ERROR: customers.json not found!", flush=True)
+            else:
+                with open(customers_path, encoding="utf-8") as f:
+                    customers_data = json.load(f)
+                print(f"[lifespan] Loaded {len(customers_data)} customers from JSON", flush=True)
+
+                conn = psycopg2.connect(db_url)
+                conn.autocommit = False
+                cur = conn.cursor()
+                print("[lifespan] PostgreSQL connected", flush=True)
+
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS customers (
+                        customer_id VARCHAR PRIMARY KEY,
+                        data        JSONB NOT NULL
+                    )
+                """)
+
+                inserted = 0
+                for customer in customers_data:
+                    cid = customer.get("customer_id")
+                    if not cid:
+                        continue
+                    cur.execute(
+                        """
+                        INSERT INTO customers (customer_id, data) VALUES (%s, %s)
+                        ON CONFLICT (customer_id) DO UPDATE SET data = EXCLUDED.data
+                        """,
+                        (cid, json.dumps(customer, ensure_ascii=False)),
+                    )
+                    if cur.rowcount == 1:
+                        inserted += 1
+
+                conn.commit()
+                cur.close()
+                conn.close()
+                print(f"[lifespan] seed_customers OK — {inserted}/{len(customers_data)} upserted", flush=True)
+
     except Exception as e:
+        import traceback
         print(f"[lifespan] seed_customers FAILED: {e}", flush=True)
-        import traceback; traceback.print_exc()
+        print(traceback.format_exc(), flush=True)
     try:
         dt.seed_sales_notes_if_empty()
         print("[lifespan] seed_sales_notes OK", flush=True)
@@ -263,6 +319,48 @@ async def api_debug():
         info["db_error"] = str(e)
 
     return info
+
+
+@app.get("/api/debug/env")
+async def api_debug_env():
+    """DATABASE_URL 및 Railway 환경 변수 진단 (보안 마스킹 적용)"""
+    raw_url = os.environ.get("DATABASE_URL", "")
+    is_set = bool(raw_url)
+
+    masked_url = None
+    if is_set:
+        masked_url = raw_url[:30] + "..." + raw_url[-10:] if len(raw_url) > 40 else raw_url[:30] + "..."
+
+    db_host = db_port = db_user = db_name = parse_error = None
+    if is_set:
+        try:
+            parsed = urlparse(raw_url)
+            db_host = parsed.hostname
+            db_port = parsed.port
+            db_user = parsed.username
+            db_name = parsed.path.lstrip("/") if parsed.path else None
+        except Exception as exc:
+            parse_error = str(exc)
+
+    other_env = {k: os.environ.get(k) for k in [
+        "RAILWAY_ENVIRONMENT", "RAILWAY_SERVICE_NAME", "RAILWAY_PROJECT_NAME",
+        "RAILWAY_DEPLOYMENT_ID", "PGHOST", "PGPORT", "PGUSER", "PGDATABASE",
+        "PORT", "PYTHONPATH",
+    ]}
+
+    return JSONResponse({
+        "database_url": {
+            "is_set": is_set,
+            "masked_value": masked_url,
+            "scheme": urlparse(raw_url).scheme if is_set else None,
+        },
+        "parsed_connection": {
+            "host": db_host, "port": db_port,
+            "user": db_user, "database": db_name,
+            "parse_error": parse_error,
+        },
+        "other_env": other_env,
+    })
 
 
 @app.get("/", response_class=HTMLResponse)
