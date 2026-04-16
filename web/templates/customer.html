@@ -810,11 +810,12 @@ function renderSalesNotes(notes) {
     return;
   }
   const items = notes.map((n, i) => {
-    const date    = n.Activity_Date || n.date || '';
-    const channel = n.Activity_Type || n.channel || '';
-    const title   = n.title || n.Activity_Log || '';
-    const content = n.content || n.Customer_Feedback || '';
-    const actionPt = n.Action_Point || '';
+    const date      = n.Activity_Date || n.date || '';
+    const channel   = n.Activity_Type || n.channel || '';
+    const title     = n.title || n.Activity_Log || '';
+    const actLog    = n.Activity_Log || n.content || '';
+    const feedback  = n.Customer_Feedback || '';
+    const actionPt  = n.Action_Point || '';
     const concerns  = (n.key_concerns || []).map(c => `<span class="tag-chip">${escHtml(c)}</span>`).join('');
     const interests = (n.expressed_interests || []).map(c => `<span class="tag-chip" style="color:#0d6efd">${escHtml(c)}</span>`).join('');
     const followUp  = n.follow_up_required
@@ -836,8 +837,9 @@ function renderSalesNotes(notes) {
         </h2>
         <div id="note${i}" class="accordion-collapse collapse ${i === 0 ? 'show' : ''}">
           <div class="note-accordion-body p-3">
-            ${content ? `<p class="small mb-2" style="white-space:pre-wrap">${escHtml(content)}</p>` : ''}
-            ${actionPt ? `<div class="small bg-white rounded p-2 mb-2 border-start border-primary border-3"><strong>Action Point:</strong> ${escHtml(actionPt)}</div>` : ''}
+            ${actLog ? `<p class="small mb-2" style="white-space:pre-wrap">${escHtml(actLog)}</p>` : ''}
+            ${feedback ? `<div class="small bg-info bg-opacity-10 rounded p-2 mb-2 border-start border-info border-3"><strong class="text-info"><i class="bi bi-chat-quote me-1"></i>Customer Feedback:</strong><br>${escHtml(feedback)}</div>` : ''}
+            ${actionPt ? `<div class="small bg-white rounded p-2 mb-2 border-start border-primary border-3"><strong><i class="bi bi-arrow-right-circle me-1 text-primary"></i>Action Point:</strong> ${escHtml(actionPt)}</div>` : ''}
             ${concerns  ? `<div class="mb-1"><span class="text-muted small me-1">우려사항:</span>${concerns}</div>` : ''}
             ${interests ? `<div><span class="text-muted small me-1">관심사항:</span>${interests}</div>` : ''}
           </div>
