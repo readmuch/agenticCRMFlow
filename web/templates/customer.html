@@ -10,7 +10,7 @@
     body { background: #f0f2f5; }
     .navbar-brand { font-weight: 700; }
 
-    /* 고객 정보 헤더 */
+    /* 고객 헤더 */
     .customer-header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; padding: 2rem 0 1.5rem; }
     .tier-badge { font-size: .9rem; font-weight: 700; padding: .4em .9em; border-radius: 20px; }
     .tier-S { background: #ffd700; color: #333; }
@@ -19,42 +19,52 @@
     .aum-big { font-size: 2rem; font-weight: 800; color: #7eb8f7; }
     .info-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .8px; opacity: .6; }
 
-    /* 분석 버튼 */
-    #btnAnalyze { min-width: 160px; }
+    /* 공통 섹션 카드 */
+    .section-card { border: none; box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 1.5rem; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin-bottom: .75rem; }
+    .section-status { font-size: .8rem; min-height: 1.4rem; }
+    .section-content { min-height: 80px; }
 
     /* 로그 터미널 */
-    #logArea {
+    .log-area {
       background: #0d1117; color: #58d68d; font-family: 'Consolas', 'Monaco', monospace;
       font-size: .82rem; line-height: 1.6; border-radius: 8px;
-      padding: 1.2rem; height: 360px; overflow-y: auto;
-      border: 1px solid #30363d; display: none;
+      padding: 1rem; max-height: 260px; overflow-y: auto;
+      border: 1px solid #30363d;
     }
-    #logArea .log-line { margin: 0; white-space: pre-wrap; word-break: break-all; }
-    #logArea .log-line.error { color: #ff7b72; }
-    #logArea .log-line.done  { color: #ffd700; font-weight: bold; }
+    .log-line { margin: 0; white-space: pre-wrap; word-break: break-all; }
+    .log-line.error { color: #ff7b72; }
+    .log-line.done  { color: #ffd700; font-weight: bold; }
 
-    /* 결과 영역 */
-    #resultsSection { display: none; }
-    .result-card { border: none; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    /* 스코어 원형 */
     .score-circle {
-      width: 90px; height: 90px; border-radius: 50%;
+      width: 80px; height: 80px; border-radius: 50%;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      font-size: 1.6rem; font-weight: 800; border: 4px solid;
+      font-size: 1.4rem; font-weight: 800; border: 4px solid; flex-shrink: 0;
     }
     .score-circle.excellent { border-color: #198754; color: #198754; }
     .score-circle.good      { border-color: #0d6efd; color: #0d6efd; }
     .score-circle.fair      { border-color: #ffc107; color: #ffc107; }
     .score-circle.poor      { border-color: #dc3545; color: #dc3545; }
-    .action-item { border-left: 4px solid #0d6efd; padding: .8rem 1rem; background: #f8f9fa; border-radius: 0 8px 8px 0; margin-bottom: .75rem; }
-    .action-item.short  { border-color: #198754; }
-    .action-item.medium { border-color: #6f42c1; }
-    .action-item.avoid  { border-color: #dc3545; background: #fff5f5; }
-    .urgency-badge { font-size: .7rem; }
-    .sector-bar { height: 8px; border-radius: 4px; }
+
+    /* NBA 액션 */
+    .action-item { border-left: 4px solid #0d6efd; padding: .75rem 1rem; background: #f8f9fa; border-radius: 0 8px 8px 0; margin-bottom: .75rem; }
+    .action-item.avoid { border-color: #dc3545; background: #fff5f5; }
+
+    /* Activity 테이블 */
+    .approval-badge { font-size: .72rem; padding: .2em .55em; border-radius: 10px; font-weight: 600; }
+    .appr-ai      { background: #fff3cd; color: #856404; }
+    .appr-crm     { background: #cfe2ff; color: #084298; }
+    .appr-sales   { background: #d1e7dd; color: #0a3622; }
+    .act-pending   { background: #e2e3e5; color: #495057; }
+    .act-progress  { background: #cfe2ff; color: #084298; }
+    .act-done      { background: #d1e7dd; color: #0a3622; }
+    .act-cancelled { background: #f8d7da; color: #721c24; }
+
+    /* 이슈 */
     .issue-item { padding: .6rem .9rem; border-radius: 6px; margin-bottom: .5rem; }
     .issue-major { background: #fff3cd; border-left: 4px solid #ffc107; }
     .issue-minor { background: #f0f4ff; border-left: 4px solid #6c757d; }
-    .nav-tabs .nav-link.active { font-weight: 600; }
 
     /* 영업 노트 */
     .note-sentiment { font-size: .72rem; font-weight: 600; padding: .25em .65em; border-radius: 12px; white-space: nowrap; }
@@ -66,7 +76,11 @@
     .tag-chip { font-size: .7rem; background: #e9ecef; color: #495057; padding: .15em .55em; border-radius: 10px; display: inline-block; margin: .1em; }
     .note-accordion-btn { background: #fffdf0 !important; }
     .note-accordion-btn:not(.collapsed) { background: #fff8d6 !important; }
-    .note-accordion-body { background: #fffdf0; border-radius: 0 0 8px 8px; }
+    .note-accordion-body { background: #fffdf0; }
+
+    /* comparison 테이블 */
+    .comparison-table td { vertical-align: top; font-size: .85rem; }
+    .rank-badge { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700; flex-shrink: 0; }
   </style>
 </head>
 <body>
@@ -126,30 +140,28 @@
 <!-- 메인 컨텐츠 -->
 <div class="container py-4">
 
-  <!-- 분석 실행 카드 -->
-  <div class="card result-card mb-4">
+  <!-- 전체 분석 실행 카드 -->
+  <div class="card section-card">
     <div class="card-body p-4">
-      <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div class="section-header">
         <div>
-          <h5 class="mb-1 fw-bold"><i class="bi bi-cpu-fill text-primary me-2"></i>AI 파이프라인 분석</h5>
-          <p class="text-muted mb-0 small">Persona → NBA → Activity → QC 순서로 자동 실행됩니다</p>
+          <h5 class="mb-1 fw-bold"><i class="bi bi-cpu-fill text-primary me-2"></i>전체 분석 실행</h5>
+          <p class="text-muted mb-0 small">Persona → NBA → Activity → QC 순서로 전체 파이프라인을 실행합니다</p>
         </div>
-        <button id="btnAnalyze" class="btn btn-primary btn-lg" onclick="startAnalysis()">
-          <i class="bi bi-play-circle-fill me-2"></i>분석 시작
+        <button id="btnFullAnalyze" class="btn btn-primary" onclick="startFullAnalysis()">
+          <i class="bi bi-play-circle-fill me-2"></i>전체 분석 실행
         </button>
       </div>
-
-      <!-- 로그 터미널 -->
-      <div id="logArea" class="mt-3" aria-live="polite">
-        <p class="log-line" style="color:#7eb8f7;"># CRM 멀티에이전트 파이프라인 시작...</p>
+      <div id="fullLogArea" class="log-area mt-3" style="display:none">
+        <p class="log-line" style="color:#7eb8f7;"># 전체 파이프라인 시작...</p>
       </div>
     </div>
   </div>
 
   <!-- 영업 노트 섹션 -->
-  <div class="card result-card mb-4">
+  <div class="card section-card">
     <div class="card-body p-4">
-      <div class="d-flex align-items-center justify-content-between mb-3">
+      <div class="section-header">
         <h5 class="mb-0 fw-bold"><i class="bi bi-journal-text text-warning me-2"></i>영업 노트</h5>
         <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#addNoteModal">
           <i class="bi bi-plus-lg me-1"></i>새 노트 추가
@@ -163,73 +175,89 @@
     </div>
   </div>
 
-  <!-- 결과 탭 섹션 -->
-  <div id="resultsSection">
-    <h5 class="fw-bold mb-3"><i class="bi bi-bar-chart-fill text-success me-2"></i>분석 결과</h5>
-
-    <ul class="nav nav-tabs mb-3" id="resultTabs">
-      <li class="nav-item">
-        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabPersona">
-          <i class="bi bi-person-badge me-1"></i>페르소나
-        </button>
-      </li>
-      <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabNBA">
-          <i class="bi bi-lightning-fill me-1"></i>NBA 추천
-        </button>
-      </li>
-      <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabActivity">
-          <i class="bi bi-calendar3 me-1"></i>Activity
-        </button>
-      </li>
-      <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabQC">
-          <i class="bi bi-shield-check me-1"></i>QC 검수
-        </button>
-      </li>
-    </ul>
-
-    <div class="tab-content">
-
-      <!-- 페르소나 탭 -->
-      <div class="tab-pane fade show active" id="tabPersona">
-        <div class="card result-card">
-          <div class="card-body p-4" id="personaContent">
-            <div class="text-muted">분석 결과를 불러오는 중...</div>
+  <!-- ① Persona 섹션 -->
+  <div class="card section-card" id="section-persona">
+    <div class="card-body p-4">
+      <div class="section-header">
+        <div>
+          <h5 class="mb-1 fw-bold"><i class="bi bi-person-badge text-info me-2"></i>페르소나 분석</h5>
+          <div class="section-status" id="status-persona">
+            <span class="text-muted"><i class="bi bi-clock me-1"></i>아직 분석되지 않음</span>
           </div>
         </div>
+        <button id="btn-persona" class="btn btn-outline-info btn-sm" onclick="runAgent('persona')">
+          <i class="bi bi-arrow-repeat me-1"></i>Persona 업데이트
+        </button>
       </div>
-
-      <!-- NBA 탭 -->
-      <div class="tab-pane fade" id="tabNBA">
-        <div class="card result-card">
-          <div class="card-body p-4" id="nbaContent">
-            <div class="text-muted">분석 결과를 불러오는 중...</div>
-          </div>
-        </div>
+      <div id="log-persona" class="log-area mb-3" style="display:none"></div>
+      <div class="section-content" id="content-persona">
+        <div class="text-muted small py-2">Persona 업데이트 버튼을 눌러 분석을 시작하세요.</div>
       </div>
-
-      <!-- Activity 탭 -->
-      <div class="tab-pane fade" id="tabActivity">
-        <div class="card result-card">
-          <div class="card-body p-4" id="activityContent">
-            <div class="text-muted">분석 결과를 불러오는 중...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- QC 탭 -->
-      <div class="tab-pane fade" id="tabQC">
-        <div class="card result-card">
-          <div class="card-body p-4" id="qcContent">
-            <div class="text-muted">분석 결과를 불러오는 중...</div>
-          </div>
-        </div>
-      </div>
-
     </div>
-  </div><!-- /resultsSection -->
+  </div>
+
+  <!-- ② NBA 섹션 -->
+  <div class="card section-card" id="section-nba">
+    <div class="card-body p-4">
+      <div class="section-header">
+        <div>
+          <h5 class="mb-1 fw-bold"><i class="bi bi-lightning-fill text-warning me-2"></i>NBA 추천</h5>
+          <div class="section-status" id="status-nba">
+            <span class="text-muted"><i class="bi bi-clock me-1"></i>아직 분석되지 않음</span>
+          </div>
+        </div>
+        <button id="btn-nba" class="btn btn-outline-warning btn-sm" onclick="runAgent('nba')">
+          <i class="bi bi-lightbulb me-1"></i>NBA 제안
+        </button>
+      </div>
+      <div id="log-nba" class="log-area mb-3" style="display:none"></div>
+      <div class="section-content" id="content-nba">
+        <div class="text-muted small py-2">NBA 제안 버튼을 눌러 추천을 시작하세요.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ Activity 섹션 -->
+  <div class="card section-card" id="section-activity">
+    <div class="card-body p-4">
+      <div class="section-header">
+        <div>
+          <h5 class="mb-1 fw-bold"><i class="bi bi-calendar3 text-success me-2"></i>Activity 일정</h5>
+          <div class="section-status" id="status-activity">
+            <span class="text-muted"><i class="bi bi-clock me-1"></i>아직 생성되지 않음</span>
+          </div>
+        </div>
+        <button id="btn-activity" class="btn btn-outline-success btn-sm" onclick="runAgent('activity')">
+          <i class="bi bi-calendar-plus me-1"></i>Activity 업데이트
+        </button>
+      </div>
+      <div id="log-activity" class="log-area mb-3" style="display:none"></div>
+      <div class="section-content" id="content-activity">
+        <div class="text-muted small py-2">Activity 업데이트 버튼을 눌러 일정을 생성하세요.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ QC 섹션 -->
+  <div class="card section-card" id="section-qc">
+    <div class="card-body p-4">
+      <div class="section-header">
+        <div>
+          <h5 class="mb-1 fw-bold"><i class="bi bi-shield-check text-danger me-2"></i>QC 검수</h5>
+          <div class="section-status" id="status-qc">
+            <span class="text-muted"><i class="bi bi-clock me-1"></i>아직 검수되지 않음</span>
+          </div>
+        </div>
+        <button id="btn-qc" class="btn btn-outline-danger btn-sm" onclick="runAgent('qc')">
+          <i class="bi bi-shield-check me-1"></i>QC 검수 실행
+        </button>
+      </div>
+      <div id="log-qc" class="log-area mb-3" style="display:none"></div>
+      <div class="section-content" id="content-qc">
+        <div class="text-muted small py-2">QC 검수 버튼을 눌러 품질 검수를 실행하세요.</div>
+      </div>
+    </div>
+  </div>
 
 </div><!-- /container -->
 
@@ -255,11 +283,8 @@
             <div class="col-md-4">
               <label class="form-label small fw-semibold">채널</label>
               <select class="form-select form-select-sm" id="noteChannel">
-                <option>대면미팅</option>
-                <option>전화</option>
-                <option>이메일</option>
-                <option>카카오톡</option>
-                <option>기타</option>
+                <option>대면미팅</option><option>전화</option><option>이메일</option>
+                <option>카카오톡</option><option>기타</option>
               </select>
             </div>
             <div class="col-12">
@@ -268,28 +293,22 @@
             </div>
             <div class="col-12">
               <label class="form-label small fw-semibold">내용</label>
-              <textarea class="form-control form-control-sm" id="noteContent" rows="5"
-                placeholder="미팅/통화 내용을 상세히 기록하세요" required></textarea>
+              <textarea class="form-control form-control-sm" id="noteContent" rows="4" placeholder="미팅/통화 내용을 상세히 기록하세요" required></textarea>
             </div>
             <div class="col-md-4">
               <label class="form-label small fw-semibold">감정 평가</label>
               <select class="form-select form-select-sm" id="noteSentiment">
-                <option>매우 긍정</option>
-                <option>긍정</option>
-                <option selected>중립</option>
-                <option>부정</option>
-                <option>매우 부정</option>
+                <option>매우 긍정</option><option>긍정</option>
+                <option selected>중립</option><option>부정</option><option>매우 부정</option>
               </select>
             </div>
             <div class="col-md-4">
               <label class="form-label small fw-semibold">주요 우려사항 <small class="text-muted">(쉼표 구분)</small></label>
-              <input type="text" class="form-control form-control-sm" id="noteKeyConcerns"
-                placeholder="우려사항1, 우려사항2">
+              <input type="text" class="form-control form-control-sm" id="noteKeyConcerns" placeholder="우려사항1, 우려사항2">
             </div>
             <div class="col-md-4">
               <label class="form-label small fw-semibold">관심 표현사항 <small class="text-muted">(쉼표 구분)</small></label>
-              <input type="text" class="form-control form-control-sm" id="noteInterests"
-                placeholder="관심사1, 관심사2">
+              <input type="text" class="form-control form-control-sm" id="noteInterests" placeholder="관심사1, 관심사2">
             </div>
             <div class="col-12">
               <div class="form-check">
@@ -314,287 +333,457 @@
 <script>
 const CUSTOMER_ID = "{{ customer_id }}";
 
-// ── 유틸리티 ──────────────────────────────────────────────────
+// ─── 유틸리티 ─────────────────────────────────────────────────────────────────
 function escHtml(s) {
-  return String(s ?? '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;');
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
-function scoreClass(score) {
-  if (score >= 90) return 'excellent';
-  if (score >= 75) return 'good';
-  if (score >= 60) return 'fair';
-  return 'poor';
+function scoreClass(s) {
+  if (s >= 90) return 'excellent'; if (s >= 75) return 'good';
+  if (s >= 60) return 'fair'; return 'poor';
 }
-
-// ── SSE 분석 실행 ─────────────────────────────────────────────
-function startAnalysis() {
-  const btn = document.getElementById('btnAnalyze');
-  const logArea = document.getElementById('logArea');
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>분석 중...';
-  logArea.style.display = 'block';
-  logArea.innerHTML = '<p class="log-line" style="color:#7eb8f7;"># 파이프라인 시작: ' + CUSTOMER_ID + '</p>';
-  document.getElementById('resultsSection').style.display = 'none';
-
-  const es = new EventSource('/api/analyze/' + CUSTOMER_ID);
-
-  es.onmessage = function(e) {
-    const data = JSON.parse(e.data);
-
-    if (data.type === 'log') {
-      appendLog(data.text);
-    } else if (data.type === 'done') {
-      appendLog('✅ 분석 완료!', 'done');
-      es.close();
-      btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>재분석';
-      loadResults();
-    } else if (data.type === 'error') {
-      appendLog('❌ 오류: ' + data.text, 'error');
-      es.close();
-      btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-play-circle-fill me-2"></i>분석 시작';
-    }
-  };
-
-  es.onerror = function() {
-    appendLog('❌ 연결이 끊어졌습니다.', 'error');
-    es.close();
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-play-circle-fill me-2"></i>분석 시작';
-  };
-}
-
-function appendLog(text, cls = '') {
-  const logArea = document.getElementById('logArea');
+function appendLog(areaId, text, cls = '') {
+  const el = document.getElementById(areaId);
+  if (!el) return;
   const p = document.createElement('p');
   p.className = 'log-line' + (cls ? ' ' + cls : '');
   p.textContent = text;
-  logArea.appendChild(p);
-  logArea.scrollTop = logArea.scrollHeight;
+  el.appendChild(p);
+  el.scrollTop = el.scrollHeight;
 }
 
-// ── 결과 로드 및 렌더링 ──────────────────────────────────────
-async function loadResults() {
+// ─── 전체 분석 실행 ────────────────────────────────────────────────────────────
+function startFullAnalysis() {
+  const btn = document.getElementById('btnFullAnalyze');
+  const logArea = document.getElementById('fullLogArea');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>실행 중...';
+  logArea.style.display = 'block';
+  logArea.innerHTML = '<p class="log-line" style="color:#7eb8f7;"># 전체 파이프라인 시작: ' + CUSTOMER_ID + '</p>';
+
+  const es = new EventSource('/api/analyze/' + CUSTOMER_ID);
+  es.onmessage = function(e) {
+    const d = JSON.parse(e.data);
+    if (d.type === 'log') {
+      appendLog('fullLogArea', d.text);
+    } else if (d.type === 'done') {
+      appendLog('fullLogArea', '✅ 전체 분석 완료! — ' + (d.completed_at || ''), 'done');
+      es.close();
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>재실행';
+      loadAllResults();
+    } else if (d.type === 'error') {
+      appendLog('fullLogArea', '❌ 오류: ' + d.text, 'error');
+      es.close();
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-play-circle-fill me-2"></i>전체 분석 실행';
+    }
+  };
+  es.onerror = function() {
+    appendLog('fullLogArea', '❌ 연결이 끊어졌습니다.', 'error');
+    es.close();
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-play-circle-fill me-2"></i>전체 분석 실행';
+  };
+}
+
+// ─── 개별 에이전트 실행 ────────────────────────────────────────────────────────
+const AGENT_CFG = {
+  persona:  { endpoint: '/api/run/persona/',  label: 'Persona 업데이트', icon: 'bi-arrow-repeat' },
+  nba:      { endpoint: '/api/run/nba/',      label: 'NBA 제안',         icon: 'bi-lightbulb' },
+  activity: { endpoint: '/api/run/activity/', label: 'Activity 업데이트',icon: 'bi-calendar-plus' },
+  qc:       { endpoint: '/api/run/qc/',       label: 'QC 검수 실행',     icon: 'bi-shield-check' },
+};
+
+function runAgent(type) {
+  const cfg    = AGENT_CFG[type];
+  const btn    = document.getElementById('btn-' + type);
+  const status = document.getElementById('status-' + type);
+  const logEl  = document.getElementById('log-' + type);
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>실행 중...';
+  status.innerHTML = '<span class="text-muted"><i class="bi bi-hourglass-split me-1"></i>처리 중...</span>';
+  logEl.style.display = 'block';
+  logEl.innerHTML = '';
+
+  const es = new EventSource(cfg.endpoint + CUSTOMER_ID);
+  es.onmessage = function(e) {
+    const d = JSON.parse(e.data);
+    if (d.type === 'log') {
+      appendLog('log-' + type, d.text);
+    } else if (d.type === 'done') {
+      es.close();
+      btn.disabled = false;
+      btn.innerHTML = `<i class="bi ${cfg.icon} me-1"></i>${cfg.label}`;
+      status.innerHTML = `<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>업데이트 완료 — ${escHtml(d.completed_at || '')}</span>`;
+      logEl.style.display = 'none';
+      // 해당 섹션만 갱신
+      fetch('/api/customer/' + CUSTOMER_ID).then(r => r.json()).then(data => {
+        if (type === 'persona')  renderPersona(data.persona);
+        if (type === 'nba')      renderNBA(data.nba);
+        if (type === 'activity') renderActivity(data.activities);
+        if (type === 'qc')       renderQC(data.qc);
+      }).catch(() => {});
+    } else if (d.type === 'error') {
+      es.close();
+      btn.disabled = false;
+      btn.innerHTML = `<i class="bi ${cfg.icon} me-1"></i>${cfg.label}`;
+      status.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>오류: ${escHtml(d.text)}</span>`;
+      logEl.style.display = 'none';
+    }
+  };
+  es.onerror = function() {
+    es.close();
+    btn.disabled = false;
+    btn.innerHTML = `<i class="bi ${cfg.icon} me-1"></i>${cfg.label}`;
+    status.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>연결 오류</span>';
+    logEl.style.display = 'none';
+  };
+}
+
+// ─── 전체 결과 갱신 ───────────────────────────────────────────────────────────
+async function loadAllResults() {
   try {
-    const res = await fetch('/api/customer/' + CUSTOMER_ID);
-    if (!res.ok) return;
-    const data = await res.json();
+    const data = await fetch('/api/customer/' + CUSTOMER_ID).then(r => r.json());
     renderPersona(data.persona);
     renderNBA(data.nba);
     renderActivity(data.activities);
     renderQC(data.qc);
-    document.getElementById('resultsSection').style.display = 'block';
-    document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } catch(e) {
-    console.error('결과 로드 실패:', e);
-  }
+  } catch(e) { console.error(e); }
 }
 
-// ── 페르소나 렌더링 ───────────────────────────────────────────
+// ─── Persona 렌더링 ───────────────────────────────────────────────────────────
 function renderPersona(p) {
-  const el = document.getElementById('personaContent');
-  if (!p) { el.innerHTML = '<div class="text-muted">페르소나 데이터가 없습니다.</div>'; return; }
-
-  const interestMap = { '최고': 5, '높음': 4, '중간': 3, '낮음': 2, '없음': 1 };
-  const interestColor = { '최고': '#dc3545', '높음': '#fd7e14', '중간': '#ffc107', '낮음': '#6c757d', '없음': '#dee2e6' };
-
-  const sectorsHtml = (p.sector_interests || []).map(s => `
-    <div class="mb-3">
-      <div class="d-flex justify-content-between align-items-center mb-1">
-        <span class="fw-semibold">${escHtml(s.sector)}</span>
-        <span class="badge" style="background:${interestColor[s.interest_level] || '#6c757d'}">${escHtml(s.interest_level)}</span>
-      </div>
-      <div class="progress mb-1" style="height:8px;">
-        <div class="progress-bar" style="width:${(interestMap[s.interest_level]||1)*20}%;background:${interestColor[s.interest_level]||'#6c757d'}"></div>
-      </div>
-      <div class="text-muted small">${escHtml(s.rationale)}</div>
-    </div>
-  `).join('');
-
-  const triggersHtml = (p.decision_triggers || []).map(t =>
-    `<li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>${escHtml(t)}</li>`
-  ).join('');
-
-  const avoidHtml = (p.avoid_topics || []).map(a =>
-    `<li class="mb-2"><i class="bi bi-x-circle text-danger me-2"></i>${escHtml(a)}</li>`
-  ).join('');
-
-  el.innerHTML = `
-    <div class="row g-4">
-      <div class="col-md-4">
-        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-speedometer2 me-1"></i>관계 점수</h6>
-        <div class="d-flex align-items-center gap-3 mb-4">
-          <div class="score-circle ${scoreClass(p.relationship_score || 0)}">
-            <span>${p.relationship_score ?? '-'}</span>
-            <span style="font-size:.65rem;font-weight:400">/ 100</span>
-          </div>
-          <div class="text-muted small">고객과의 전반적 관계 수준</div>
-        </div>
-        <h6 class="fw-bold text-primary mb-2"><i class="bi bi-chat-dots me-1"></i>커뮤니케이션</h6>
-        ${p.communication_preferences ? `
-          <div class="small">
-            <div class="mb-1"><span class="text-muted">선호 채널:</span> ${escHtml(p.communication_preferences.preferred_channel)}</div>
-            <div class="mb-1"><span class="text-muted">접촉 주기:</span> ${escHtml(p.communication_preferences.contact_cadence)}</div>
-          </div>
-        ` : ''}
-      </div>
-      <div class="col-md-4">
-        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-graph-up me-1"></i>섹터 관심도</h6>
-        ${sectorsHtml || '<div class="text-muted small">데이터 없음</div>'}
-      </div>
-      <div class="col-md-4">
-        <h6 class="fw-bold text-success mb-3"><i class="bi bi-lightning-fill me-1"></i>결정 트리거</h6>
-        <ul class="list-unstyled small">${triggersHtml || '<li class="text-muted">데이터 없음</li>'}</ul>
-        <h6 class="fw-bold text-danger mb-3 mt-3"><i class="bi bi-slash-circle me-1"></i>절대 금지</h6>
-        <ul class="list-unstyled small">${avoidHtml || '<li class="text-muted">데이터 없음</li>'}</ul>
-      </div>
-    </div>
-  `;
-}
-
-// ── NBA 렌더링 ────────────────────────────────────────────────
-function renderNBA(nba) {
-  const el = document.getElementById('nbaContent');
-  if (!nba) { el.innerHTML = '<div class="text-muted">NBA 데이터가 없습니다.</div>'; return; }
-
-  function actionHtml(actions, cls) {
-    return (actions || []).map(a => `
-      <div class="action-item ${cls} mb-3">
-        <div class="d-flex justify-content-between align-items-start mb-1">
-          <strong class="small">${escHtml(a.title)}</strong>
-          ${a.urgency ? `<span class="badge bg-danger urgency-badge ms-2 flex-shrink-0">${escHtml(a.urgency)}</span>` : ''}
-        </div>
-        <div class="text-muted small mb-1">${escHtml(a.rationale)}</div>
-        ${a.success_metric ? `<div class="small"><i class="bi bi-bullseye text-primary me-1"></i>${escHtml(a.success_metric)}</div>` : ''}
-      </div>
-    `).join('');
-  }
-
-  const avoidHtml = (nba.avoid_actions || []).map(a => `
-    <div class="action-item avoid mb-2">
-      <strong class="small text-danger">${escHtml(a.title)}</strong>
-      <div class="text-muted small mt-1">${escHtml(a.rationale)}</div>
-    </div>
-  `).join('');
-
-  const riskBadge = { high: 'danger', medium: 'warning', low: 'success' };
-
-  el.innerHTML = `
-    <div class="d-flex align-items-center gap-2 mb-4">
-      ${nba.risk_level ? `<span class="badge bg-${riskBadge[nba.risk_level]||'secondary'} fs-6">리스크: ${escHtml(nba.risk_level.toUpperCase())}</span>` : ''}
-    </div>
-    ${nba.summary ? `<div class="alert alert-info small">${escHtml(nba.summary)}</div>` : ''}
-
-    <h6 class="fw-bold text-danger mb-2"><i class="bi bi-alarm me-1"></i>즉시 실행</h6>
-    ${actionHtml(nba.immediate_actions, '') || '<div class="text-muted small">없음</div>'}
-
-    <h6 class="fw-bold text-success mb-2 mt-4"><i class="bi bi-calendar-check me-1"></i>단기 액션</h6>
-    ${actionHtml(nba.short_term_actions, 'short') || '<div class="text-muted small">없음</div>'}
-
-    <h6 class="fw-bold text-purple mb-2 mt-4" style="color:#6f42c1"><i class="bi bi-calendar3 me-1"></i>중기 액션</h6>
-    ${actionHtml(nba.medium_term_actions, 'medium') || '<div class="text-muted small">없음</div>'}
-
-    <h6 class="fw-bold text-danger mb-2 mt-4"><i class="bi bi-x-octagon me-1"></i>금지 행동</h6>
-    ${avoidHtml || '<div class="text-muted small">없음</div>'}
-  `;
-}
-
-// ── Activity 렌더링 ───────────────────────────────────────────
-function renderActivity(activities) {
-  const el = document.getElementById('activityContent');
-  if (!activities || activities.length === 0) {
-    el.innerHTML = '<div class="text-muted">Activity 데이터가 없습니다.</div>';
+  const el = document.getElementById('content-persona');
+  const st = document.getElementById('status-persona');
+  if (!p) {
+    el.innerHTML = '<div class="text-muted small">페르소나 데이터가 없습니다.</div>';
     return;
   }
 
-  const statusColor = { '완료': 'success', '진행중': 'primary', '예정': 'secondary', '지연': 'danger' };
+  // 마지막 업데이트 날짜 표시
+  if (p.updated_at) {
+    st.innerHTML = `<span class="text-muted"><i class="bi bi-calendar-check me-1"></i>마지막 업데이트: ${escHtml(p.updated_at)}</span>`;
+  }
 
-  const rows = activities.map(a => `
-    <tr>
-      <td class="text-muted small">${escHtml(a.activity_id || '')}</td>
-      <td><strong class="small">${escHtml(a.title || a.activity_type || '')}</strong></td>
-      <td class="small">${escHtml(a.due_date || a.scheduled_date || '')}</td>
-      <td><span class="badge bg-${statusColor[a.status]||'secondary'}">${escHtml(a.status || '')}</span></td>
-      <td class="small text-muted">${escHtml(a.linked_nba_action || '')}</td>
-    </tr>
-  `).join('');
+  // 새 스키마 (preferred_sectors 존재)
+  if (p.preferred_sectors !== undefined) {
+    const prefSectors = (p.preferred_sectors || []).map(s =>
+      `<li class="mb-1"><i class="bi bi-check-circle text-success me-1"></i><strong>${escHtml(s.sector)}</strong> — ${escHtml(s.reason)}</li>`
+    ).join('');
+    const dislikeSectors = (p.disliked_sectors || []).map(s =>
+      `<li class="mb-1"><i class="bi bi-x-circle text-danger me-1"></i><strong>${escHtml(s.sector)}</strong> — ${escHtml(s.reason)}</li>`
+    ).join('');
+    const prefContent = (p.preferred_content_types || []).map(c =>
+      `<li class="mb-1"><i class="bi bi-check2 text-success me-1"></i>${escHtml(c.type)} — <span class="text-muted">${escHtml(c.reason)}</span></li>`
+    ).join('');
+    const dislikeContent = (p.disliked_content_types || []).map(c =>
+      `<li class="mb-1"><i class="bi bi-dash text-danger me-1"></i>${escHtml(c.type)} — <span class="text-muted">${escHtml(c.reason)}</span></li>`
+    ).join('');
+    const requirements = (p.key_requirements || []).map(r =>
+      `<li class="mb-1"><i class="bi bi-pin-angle text-primary me-1"></i>${escHtml(r)}</li>`
+    ).join('');
+    const dislikes = (p.explicit_dislikes || []).map(d =>
+      `<li class="mb-1"><i class="bi bi-ban text-danger me-1"></i>${escHtml(d)}</li>`
+    ).join('');
+    const style = p.preferred_analysis_style || {};
+
+    el.innerHTML = `
+      <div class="row g-4">
+        <div class="col-md-6">
+          <h6 class="fw-bold text-success mb-2"><i class="bi bi-graph-up me-1"></i>선호 섹터</h6>
+          <ul class="list-unstyled small">${prefSectors || '<li class="text-muted">없음</li>'}</ul>
+          <h6 class="fw-bold text-danger mb-2 mt-3"><i class="bi bi-slash-circle me-1"></i>기피 섹터</h6>
+          <ul class="list-unstyled small">${dislikeSectors || '<li class="text-muted">없음</li>'}</ul>
+        </div>
+        <div class="col-md-6">
+          <h6 class="fw-bold text-primary mb-2"><i class="bi bi-file-earmark-text me-1"></i>선호 콘텐츠 유형</h6>
+          <ul class="list-unstyled small">${prefContent || '<li class="text-muted">없음</li>'}</ul>
+          <h6 class="fw-bold text-warning mb-2 mt-3"><i class="bi bi-file-earmark-x me-1"></i>기피 콘텐츠 유형</h6>
+          <ul class="list-unstyled small">${dislikeContent || '<li class="text-muted">없음</li>'}</ul>
+        </div>
+        <div class="col-md-6">
+          <h6 class="fw-bold text-info mb-2"><i class="bi bi-pin me-1"></i>핵심 요구사항</h6>
+          <ul class="list-unstyled small">${requirements || '<li class="text-muted">없음</li>'}</ul>
+        </div>
+        <div class="col-md-6">
+          <h6 class="fw-bold text-danger mb-2"><i class="bi bi-exclamation-triangle me-1"></i>명시적 불만/거부 항목</h6>
+          <ul class="list-unstyled small">${dislikes || '<li class="text-muted">없음</li>'}</ul>
+          ${style.style ? `
+            <h6 class="fw-bold text-secondary mb-2 mt-3"><i class="bi bi-sliders me-1"></i>선호 분석 스타일</h6>
+            <div class="small text-muted">${escHtml(style.style)} (${escHtml(style.detail_level || '')})</div>
+            ${style.rationale ? `<div class="small text-muted mt-1">${escHtml(style.rationale)}</div>` : ''}
+          ` : ''}
+        </div>
+      </div>`;
+  } else {
+    // 구 스키마
+    const interestColor = { '최고': '#dc3545', '높음': '#fd7e14', '중간': '#ffc107', '낮음': '#6c757d', '없음': '#dee2e6' };
+    const interestMap   = { '최고': 5, '높음': 4, '중간': 3, '낮음': 2, '없음': 1 };
+    const sectors = (p.sector_interests || []).map(s => `
+      <div class="mb-2">
+        <div class="d-flex justify-content-between mb-1">
+          <span class="small fw-semibold">${escHtml(s.sector)}</span>
+          <span class="badge" style="background:${interestColor[s.interest_level]||'#6c757d'}">${escHtml(s.interest_level)}</span>
+        </div>
+        <div class="progress mb-1" style="height:6px">
+          <div class="progress-bar" style="width:${(interestMap[s.interest_level]||1)*20}%;background:${interestColor[s.interest_level]||'#6c757d'}"></div>
+        </div>
+        <div class="text-muted" style="font-size:.75rem">${escHtml(s.rationale)}</div>
+      </div>`).join('');
+    const triggers = (p.decision_triggers || []).map(t =>
+      `<li class="mb-1"><i class="bi bi-check2-circle text-success me-1"></i>${escHtml(t)}</li>`).join('');
+    const avoids = (p.avoid_topics || []).map(a =>
+      `<li class="mb-1"><i class="bi bi-x-circle text-danger me-1"></i>${escHtml(a)}</li>`).join('');
+
+    el.innerHTML = `
+      <div class="row g-4">
+        <div class="col-md-4">
+          <h6 class="fw-bold text-primary mb-2"><i class="bi bi-speedometer2 me-1"></i>관계 점수</h6>
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="score-circle ${scoreClass(p.relationship_score||0)}">
+              <span>${p.relationship_score??'-'}</span>
+              <span style="font-size:.6rem;font-weight:400">/ 100</span>
+            </div>
+          </div>
+          ${p.communication_preferences ? `
+            <h6 class="fw-bold text-primary mb-1" style="font-size:.85rem">커뮤니케이션 선호</h6>
+            <div class="small text-muted">
+              ${p.communication_preferences.preferred_channel ? '채널: ' + escHtml(p.communication_preferences.preferred_channel) : ''}
+              ${p.communication_preferences.contact_cadence ? '<br>주기: ' + escHtml(p.communication_preferences.contact_cadence) : ''}
+            </div>
+          ` : ''}
+        </div>
+        <div class="col-md-4">
+          <h6 class="fw-bold text-primary mb-2"><i class="bi bi-graph-up me-1"></i>섹터 관심도</h6>
+          ${sectors || '<div class="text-muted small">없음</div>'}
+        </div>
+        <div class="col-md-4">
+          <h6 class="fw-bold text-success mb-2"><i class="bi bi-lightning me-1"></i>결정 트리거</h6>
+          <ul class="list-unstyled small">${triggers || '<li class="text-muted">없음</li>'}</ul>
+          <h6 class="fw-bold text-danger mb-2 mt-3"><i class="bi bi-slash-circle me-1"></i>절대 금지</h6>
+          <ul class="list-unstyled small">${avoids || '<li class="text-muted">없음</li>'}</ul>
+        </div>
+      </div>`;
+  }
+}
+
+// ─── NBA 렌더링 ────────────────────────────────────────────────────────────────
+function renderNBA(nba) {
+  const el = document.getElementById('content-nba');
+  const st = document.getElementById('status-nba');
+  if (!nba) { el.innerHTML = '<div class="text-muted small">NBA 데이터가 없습니다.</div>'; return; }
+
+  if (nba.generated_at) {
+    st.innerHTML = `<span class="text-muted"><i class="bi bi-calendar-check me-1"></i>마지막 제안: ${escHtml(nba.generated_at)}</span>`;
+  }
+
+  const riskColor = { high: 'danger', medium: 'warning', low: 'success' };
+  const apprLabel = { ai_proposed: ['appr-ai','AI 제안'], crm_approved: ['appr-crm','CRM 승인'], sales_approved: ['appr-sales','Sales 승인'] };
+
+  // 새 스키마: actions 배열
+  if (Array.isArray(nba.actions)) {
+    // 참고 노트
+    const refNotes = (nba.reference_notes || []).map(n => `
+      <tr>
+        <td>${escHtml(n.note_id||'')}</td>
+        <td>${escHtml(n.activity_date||'')}</td>
+        <td><span class="badge bg-light text-dark border">${n.recency_weight||''}</span></td>
+        <td class="text-muted" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(n.action_point||'')}</td>
+      </tr>`).join('');
+
+    // top priority comparison
+    const cmp = nba.top_priority_comparison || {};
+    const cmpHtml = cmp.note_id ? `
+      <div class="card bg-light border-0 p-3 mb-3">
+        <h6 class="fw-bold mb-2"><i class="bi bi-arrow-left-right me-1 text-primary"></i>최우선 액션 vs 노트 Action_Point 비교</h6>
+        <table class="table table-sm comparison-table mb-0">
+          <tr>
+            <td width="45%"><span class="badge bg-secondary me-1">노트 ${escHtml(cmp.note_id||'')} (${escHtml(cmp.activity_date||'')})</span><br><span class="text-muted">${escHtml(cmp.action_point_from_note||'')}</span></td>
+            <td width="10%" class="text-center text-muted">→</td>
+            <td width="45%"><span class="badge bg-primary me-1">NBA 최우선</span><br>${escHtml(cmp.nba_top_priority_action||'')}</td>
+          </tr>
+          ${cmp.rationale ? `<tr><td colspan="3" class="text-muted pt-2" style="font-size:.8rem"><i class="bi bi-info-circle me-1"></i>${escHtml(cmp.rationale)}</td></tr>` : ''}
+        </table>
+      </div>` : '';
+
+    // actions
+    const actionsHtml = (nba.actions || []).map(a => {
+      const [apprCls, apprText] = apprLabel[a.approval?.status] || ['appr-ai','AI 제안'];
+      const relNotes = (a.related_note_ids || []).map(id => `<span class="tag-chip">${escHtml(id)}</span>`).join('');
+      return `
+        <div class="action-item mb-3">
+          <div class="d-flex align-items-start gap-2 mb-1">
+            <div class="rank-badge bg-primary text-white">${a.rank||''}</div>
+            <div class="flex-grow-1">
+              <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <strong class="small">${escHtml(a.title||'')}</strong>
+                <span class="approval-badge ${apprCls}">${apprText}</span>
+                ${a.deadline ? `<span class="badge bg-light text-dark border"><i class="bi bi-calendar me-1"></i>${escHtml(a.deadline)}</span>` : ''}
+              </div>
+              <div class="text-muted small mb-1">${escHtml(a.rationale||'')}</div>
+              ${a.how_to ? `<div class="small"><i class="bi bi-arrow-right text-primary me-1"></i>${escHtml(a.how_to)}</div>` : ''}
+              ${relNotes ? `<div class="mt-1"><span class="text-muted" style="font-size:.75rem">관련 노트: </span>${relNotes}</div>` : ''}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    const avoidHtml = (nba.avoid_actions || []).map(a =>
+      typeof a === 'string'
+        ? `<div class="action-item avoid mb-2"><span class="small text-danger">${escHtml(a)}</span></div>`
+        : `<div class="action-item avoid mb-2"><strong class="small text-danger">${escHtml(a.title||a)}</strong>${a.rationale ? `<div class="text-muted small">${escHtml(a.rationale)}</div>` : ''}</div>`
+    ).join('');
+
+    el.innerHTML = `
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        ${nba.risk_level ? `<span class="badge bg-${riskColor[nba.risk_level]||'secondary'}">리스크: ${escHtml(nba.risk_level.toUpperCase())}</span>` : ''}
+        ${nba.analysis_date ? `<span class="badge bg-light text-dark border">분석일: ${escHtml(nba.analysis_date)}</span>` : ''}
+      </div>
+      ${nba.summary ? `<div class="alert alert-info small mb-3">${escHtml(nba.summary)}</div>` : ''}
+
+      ${refNotes ? `
+        <div class="mb-3">
+          <h6 class="fw-bold mb-2"><i class="bi bi-journal-bookmark me-1 text-secondary"></i>참고 노트 (recency 가중치 순)</h6>
+          <div class="table-responsive"><table class="table table-sm table-hover" style="font-size:.82rem">
+            <thead class="table-light"><tr><th>노트 ID</th><th>날짜</th><th>가중치</th><th>Action_Point</th></tr></thead>
+            <tbody>${refNotes}</tbody>
+          </table></div>
+        </div>` : ''}
+
+      ${cmpHtml}
+
+      <h6 class="fw-bold mb-2"><i class="bi bi-list-ol me-1 text-primary"></i>추천 액션 (우선순위 순)</h6>
+      ${actionsHtml || '<div class="text-muted small">없음</div>'}
+
+      ${avoidHtml ? `<h6 class="fw-bold text-danger mb-2 mt-3"><i class="bi bi-x-octagon me-1"></i>금지 행동</h6>${avoidHtml}` : ''}
+      ${nba.expected_outcomes ? `<div class="alert alert-light border mt-3 small"><i class="bi bi-graph-up-arrow me-1"></i><strong>예상 성과 (3개월):</strong> ${escHtml(nba.expected_outcomes)}</div>` : ''}
+    `;
+  } else {
+    // 구 스키마
+    function oldActionHtml(actions, cls) {
+      return (actions||[]).map(a => `
+        <div class="action-item ${cls} mb-2">
+          <div class="d-flex justify-content-between mb-1">
+            <strong class="small">${escHtml(a.title)}</strong>
+            ${a.urgency ? `<span class="badge bg-danger" style="font-size:.7rem">${escHtml(a.urgency)}</span>` : ''}
+          </div>
+          <div class="text-muted small">${escHtml(a.rationale)}</div>
+          ${a.success_metric ? `<div class="small mt-1"><i class="bi bi-bullseye text-primary me-1"></i>${escHtml(a.success_metric)}</div>` : ''}
+        </div>`).join('');
+    }
+    el.innerHTML = `
+      ${nba.risk_level ? `<span class="badge bg-${riskColor[nba.risk_level]||'secondary'} mb-3">리스크: ${escHtml(nba.risk_level.toUpperCase())}</span>` : ''}
+      ${nba.summary ? `<div class="alert alert-info small mb-3">${escHtml(nba.summary)}</div>` : ''}
+      <h6 class="fw-bold text-danger mb-2">즉시 실행</h6>${oldActionHtml(nba.immediate_actions,'')}
+      <h6 class="fw-bold text-success mb-2 mt-3">단기 액션</h6>${oldActionHtml(nba.short_term_actions,'short')}
+      <h6 class="fw-bold mb-2 mt-3" style="color:#6f42c1">중기 액션</h6>${oldActionHtml(nba.medium_term_actions,'medium')}
+    `;
+  }
+}
+
+// ─── Activity 렌더링 ──────────────────────────────────────────────────────────
+function renderActivity(activities) {
+  const el = document.getElementById('content-activity');
+  const st = document.getElementById('status-activity');
+  if (!activities || activities.length === 0) {
+    el.innerHTML = '<div class="text-muted small">Activity 데이터가 없습니다.</div>';
+    return;
+  }
+
+  const apprLabel = { ai_proposed: ['appr-ai','AI 제안'], crm_approved: ['appr-crm','CRM 승인'], sales_approved: ['appr-sales','Sales 승인'] };
+  const actLabel  = { pending: ['act-pending','대기'], in_progress: ['act-progress','진행중'], completed: ['act-done','완료'], cancelled: ['act-cancelled','취소'] };
+
+  const rows = activities.map(a => {
+    // NBA 승인 상태
+    const nbaStatus = a.nba_approval?.status || '';
+    const [aCls, aText] = apprLabel[nbaStatus] || ['appr-ai', nbaStatus || '-'];
+    // Activity 진행 상태 (새 스키마: a.activity_status.status, 구: a.status)
+    const actSt = a.activity_status?.status || a.status || 'pending';
+    const [stCls, stText] = actLabel[actSt] || ['act-pending', actSt];
+    // 연결된 NBA
+    const nbaTitle = a.nba_approval?.linked_nba_title || a.linked_nba_action || '';
+
+    return `<tr>
+      <td class="text-muted small">${escHtml(a.id || a.activity_id || '')}</td>
+      <td><strong class="small">${escHtml(a.title || '')}</strong></td>
+      <td class="small">${escHtml(a.type || '')}</td>
+      <td class="small fw-semibold">${escHtml(a.due_date || '')}</td>
+      <td><span class="approval-badge ${stCls}">${stText}</span></td>
+      <td><span class="approval-badge ${aCls}">${aText}</span></td>
+      <td class="text-muted small" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(nbaTitle)}">${escHtml(nbaTitle)}</td>
+    </tr>`;
+  }).join('');
+
+  st.innerHTML = `<span class="text-muted"><i class="bi bi-list-check me-1"></i>총 ${activities.length}개 Activity</span>`;
 
   el.innerHTML = `
     <div class="table-responsive">
-      <table class="table table-hover table-sm align-middle">
+      <table class="table table-hover table-sm align-middle" style="font-size:.85rem">
         <thead class="table-light">
-          <tr>
-            <th>ID</th><th>제목</th><th>일정</th><th>상태</th><th>연계 NBA</th>
-          </tr>
+          <tr><th>ID</th><th>제목</th><th>유형</th><th>기한</th><th>진행상태</th><th>NBA 승인</th><th>연계 NBA</th></tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
-    <div class="text-muted small mt-2">총 ${activities.length}개 Activity</div>
-  `;
+    <div class="mt-2">
+      <span class="approval-badge appr-ai me-2">AI 제안</span>
+      <span class="approval-badge appr-crm me-2">CRM 승인</span>
+      <span class="approval-badge appr-sales me-2">Sales 승인</span>
+      <span class="approval-badge act-pending me-2">대기</span>
+      <span class="approval-badge act-progress me-2">진행중</span>
+      <span class="approval-badge act-done">완료</span>
+    </div>`;
 }
 
-// ── QC 렌더링 ─────────────────────────────────────────────────
+// ─── QC 렌더링 ────────────────────────────────────────────────────────────────
 function renderQC(qc) {
-  const el = document.getElementById('qcContent');
-  if (!qc) { el.innerHTML = '<div class="text-muted">QC 데이터가 없습니다.</div>'; return; }
+  const el = document.getElementById('content-qc');
+  const st = document.getElementById('status-qc');
+  if (!qc) { el.innerHTML = '<div class="text-muted small">QC 데이터가 없습니다.</div>'; return; }
 
-  const verdictLabel = {
+  if (qc.reviewed_at) {
+    st.innerHTML = `<span class="text-muted"><i class="bi bi-calendar-check me-1"></i>마지막 검수: ${escHtml(qc.reviewed_at)}</span>`;
+  }
+
+  const verdictMap = {
     pass_excellent: { text: '우수 통과', cls: 'success' },
-    pass: { text: '통과', cls: 'primary' },
+    pass:           { text: '통과', cls: 'primary' },
     pass_with_issues: { text: '조건부 통과', cls: 'warning' },
-    fail: { text: '불합격', cls: 'danger' },
+    fail:           { text: '불합격', cls: 'danger' },
   };
-  const v = verdictLabel[qc.verdict] || { text: qc.verdict || '-', cls: 'secondary' };
+  const v = verdictMap[qc.verdict] || { text: qc.verdict || '-', cls: 'secondary' };
 
-  const issuesHtml = (qc.critical_issues || []).map(i => `
+  const issues = (qc.critical_issues || []).map(i => `
     <div class="issue-item issue-${i.severity || 'minor'}">
-      <div class="d-flex align-items-center gap-2 mb-1">
-        <span class="badge bg-${i.severity === 'major' ? 'warning text-dark' : 'secondary'}">${escHtml(i.severity || '')}</span>
-        <strong class="small">${escHtml(i.description)}</strong>
+      <div class="d-flex gap-2 align-items-center mb-1">
+        <span class="badge bg-${i.severity === 'major' ? 'warning text-dark' : 'secondary'}">${escHtml(i.severity||'')}</span>
+        <strong class="small">${escHtml(i.description||'')}</strong>
       </div>
       ${i.fix ? `<div class="small text-muted"><i class="bi bi-tools me-1"></i>${escHtml(i.fix)}</div>` : ''}
-    </div>
-  `).join('');
+    </div>`).join('');
 
   el.innerHTML = `
-    <div class="row g-4 mb-4">
-      <div class="col-auto">
-        <div class="score-circle ${scoreClass(qc.overall_score || 0)}">
-          <span>${qc.overall_score ?? '-'}</span>
-          <span style="font-size:.65rem;font-weight:400">점</span>
-        </div>
+    <div class="d-flex align-items-center gap-4 mb-4">
+      <div class="score-circle ${scoreClass(qc.overall_score||0)}">
+        <span>${qc.overall_score??'-'}</span>
+        <span style="font-size:.6rem;font-weight:400">점</span>
       </div>
-      <div class="col">
-        <div class="mb-2">
-          <span class="badge bg-${v.cls} fs-6">${v.text}</span>
+      <div>
+        <span class="badge bg-${v.cls} fs-6 mb-2">${v.text}</span>
+        <div class="d-flex flex-wrap gap-2">
+          ${qc.persona_review  ? `<span class="badge bg-light text-dark border">페르소나 ${qc.persona_review.score}점</span>` : ''}
+          ${qc.nba_review      ? `<span class="badge bg-light text-dark border">NBA ${qc.nba_review.score}점</span>` : ''}
+          ${qc.activity_review ? `<span class="badge bg-light text-dark border">Activity ${qc.activity_review.score}점</span>` : ''}
         </div>
-        <div class="row g-2 mt-1">
-          ${qc.persona_review ? `<div class="col-auto"><span class="badge bg-light text-dark border">페르소나 ${qc.persona_review.score}점</span></div>` : ''}
-          ${qc.nba_review ? `<div class="col-auto"><span class="badge bg-light text-dark border">NBA ${qc.nba_review.score}점</span></div>` : ''}
-          ${qc.activity_review ? `<div class="col-auto"><span class="badge bg-light text-dark border">Activity ${qc.activity_review.score}점</span></div>` : ''}
-        </div>
-        <div class="text-muted small mt-2">${escHtml(qc.reviewed_at || '')}</div>
       </div>
     </div>
-
-    ${qc.overall_summary ? `
-      <div class="alert alert-light border mb-4">
-        <h6 class="fw-bold mb-2"><i class="bi bi-file-text me-1"></i>종합 평가</h6>
-        <div class="small">${escHtml(qc.overall_summary)}</div>
-      </div>
-    ` : ''}
-
-    <h6 class="fw-bold mb-3"><i class="bi bi-exclamation-triangle me-1 text-warning"></i>주요 이슈</h6>
-    ${issuesHtml || '<div class="text-muted small">이슈 없음</div>'}
-  `;
+    ${qc.overall_summary ? `<div class="alert alert-light border mb-3 small"><h6 class="fw-bold mb-1">종합 평가</h6>${escHtml(qc.overall_summary)}</div>` : ''}
+    <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle text-warning me-1"></i>주요 이슈</h6>
+    ${issues || '<div class="text-muted small">이슈 없음</div>'}`;
 }
 
-// ── 영업 노트 ─────────────────────────────────────────────────
+// ─── 영업 노트 ─────────────────────────────────────────────────────────────────
 function sentimentClass(s) {
   s = s || '';
   if (s.includes('매우 긍정')) return 'sent-very-pos';
@@ -605,42 +794,47 @@ function sentimentClass(s) {
 }
 
 function renderSalesNotes(notes) {
-  const container = document.getElementById('notesContainer');
+  const el = document.getElementById('notesContainer');
   if (!notes || notes.length === 0) {
-    container.innerHTML = '<div class="text-muted small py-2"><i class="bi bi-journal-x me-1"></i>등록된 영업 노트가 없습니다.</div>';
+    el.innerHTML = '<div class="text-muted small py-2"><i class="bi bi-journal-x me-1"></i>등록된 영업 노트가 없습니다.</div>';
     return;
   }
-  const items = notes.map((note, i) => {
-    const concerns   = (note.key_concerns || []).map(c => `<span class="tag-chip">${escHtml(c)}</span>`).join('');
-    const interests  = (note.expressed_interests || []).map(c => `<span class="tag-chip" style="color:#0d6efd">${escHtml(c)}</span>`).join('');
-    const followUpBadge = note.follow_up_required
-      ? '<span class="badge bg-warning text-dark ms-1" style="font-size:.7rem"><i class="bi bi-bell-fill me-1"></i>후속 조치</span>'
-      : '';
+  const items = notes.map((n, i) => {
+    const date    = n.Activity_Date || n.date || '';
+    const channel = n.Activity_Type || n.channel || '';
+    const title   = n.title || n.Activity_Log || '';
+    const content = n.content || n.Customer_Feedback || '';
+    const actionPt = n.Action_Point || '';
+    const concerns  = (n.key_concerns || []).map(c => `<span class="tag-chip">${escHtml(c)}</span>`).join('');
+    const interests = (n.expressed_interests || []).map(c => `<span class="tag-chip" style="color:#0d6efd">${escHtml(c)}</span>`).join('');
+    const followUp  = n.follow_up_required
+      ? '<span class="badge bg-warning text-dark ms-1" style="font-size:.7rem"><i class="bi bi-bell-fill me-1"></i>후속 조치</span>' : '';
     return `
       <div class="accordion-item border-0 mb-2 rounded shadow-sm overflow-hidden">
         <h2 class="accordion-header m-0">
           <button class="accordion-button note-accordion-btn ${i > 0 ? 'collapsed' : ''} py-2 px-3"
             type="button" data-bs-toggle="collapse" data-bs-target="#note${i}">
             <div class="w-100 d-flex align-items-center gap-2 flex-wrap pe-2">
-              <span class="text-muted small">${escHtml(note.date)}</span>
-              <span class="badge bg-light text-dark border">${escHtml(note.channel || '')}</span>
-              <strong class="small flex-grow-1">${escHtml(note.title)}</strong>
-              <span class="note-sentiment ${sentimentClass(note.sentiment)}">${escHtml(note.sentiment || '')}</span>
-              ${followUpBadge}
-              <span class="text-muted small">${escHtml(note.author || '')}</span>
+              <span class="text-muted small">${escHtml(date)}</span>
+              <span class="badge bg-light text-dark border">${escHtml(channel)}</span>
+              <strong class="small flex-grow-1">${escHtml(title.substring(0,60))}</strong>
+              ${n.sentiment ? `<span class="note-sentiment ${sentimentClass(n.sentiment)}">${escHtml(n.sentiment)}</span>` : ''}
+              ${followUp}
+              <span class="text-muted small">${escHtml(n.Sales_Name || n.author || '')}</span>
             </div>
           </button>
         </h2>
         <div id="note${i}" class="accordion-collapse collapse ${i === 0 ? 'show' : ''}">
           <div class="note-accordion-body p-3">
-            <p class="small mb-3" style="white-space:pre-wrap;">${escHtml(note.content)}</p>
-            ${concerns  ? `<div class="mb-2"><span class="text-muted small me-1">우려사항:</span>${concerns}</div>`  : ''}
-            ${interests ? `<div><span class="text-muted small me-1">관심사항:</span>${interests}</div>`              : ''}
+            ${content ? `<p class="small mb-2" style="white-space:pre-wrap">${escHtml(content)}</p>` : ''}
+            ${actionPt ? `<div class="small bg-white rounded p-2 mb-2 border-start border-primary border-3"><strong>Action Point:</strong> ${escHtml(actionPt)}</div>` : ''}
+            ${concerns  ? `<div class="mb-1"><span class="text-muted small me-1">우려사항:</span>${concerns}</div>` : ''}
+            ${interests ? `<div><span class="text-muted small me-1">관심사항:</span>${interests}</div>` : ''}
           </div>
         </div>
       </div>`;
   }).join('');
-  container.innerHTML = `<div class="accordion accordion-flush">${items}</div>`;
+  el.innerHTML = `<div class="accordion accordion-flush">${items}</div>`;
 }
 
 async function loadSalesNotes() {
@@ -658,27 +852,22 @@ async function submitNote(e) {
   const btn = document.getElementById('noteSubmitBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>저장 중...';
-
   const splitTags = v => v.split(',').map(s => s.trim()).filter(Boolean);
-
   const body = {
-    customer_id:        CUSTOMER_ID,
-    date:               document.getElementById('noteDate').value,
-    author:             document.getElementById('noteAuthor').value,
-    channel:            document.getElementById('noteChannel').value,
-    title:              document.getElementById('noteTitle').value,
-    content:            document.getElementById('noteContent').value,
-    sentiment:          document.getElementById('noteSentiment').value,
-    key_concerns:       splitTags(document.getElementById('noteKeyConcerns').value),
-    expressed_interests:splitTags(document.getElementById('noteInterests').value),
-    follow_up_required: document.getElementById('noteFollowUp').checked,
+    customer_id:         CUSTOMER_ID,
+    date:                document.getElementById('noteDate').value,
+    author:              document.getElementById('noteAuthor').value,
+    channel:             document.getElementById('noteChannel').value,
+    title:               document.getElementById('noteTitle').value,
+    content:             document.getElementById('noteContent').value,
+    sentiment:           document.getElementById('noteSentiment').value,
+    key_concerns:        splitTags(document.getElementById('noteKeyConcerns').value),
+    expressed_interests: splitTags(document.getElementById('noteInterests').value),
+    follow_up_required:  document.getElementById('noteFollowUp').checked,
   };
-
   try {
     const res = await fetch('/api/sales-notes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error((await res.json()).detail || '서버 오류');
     bootstrap.Modal.getInstance(document.getElementById('addNoteModal')).hide();
@@ -692,25 +881,19 @@ async function submitNote(e) {
   }
 }
 
-// ── 페이지 로드 시 기존 결과 표시 ───────────────────────────
+// ─── 페이지 초기화 ────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function() {
-  // 오늘 날짜를 기본값으로
   document.getElementById('noteDate').value = new Date().toISOString().split('T')[0];
-
   loadSalesNotes();
-
+  // 기존 저장 결과 로드
   fetch('/api/customer/' + CUSTOMER_ID)
     .then(r => r.ok ? r.json() : null)
     .then(data => {
-      if (data && data.persona) {
-        renderPersona(data.persona);
-        renderNBA(data.nba);
-        renderActivity(data.activities);
-        renderQC(data.qc);
-        document.getElementById('resultsSection').style.display = 'block';
-        document.getElementById('btnAnalyze').innerHTML =
-          '<i class="bi bi-arrow-repeat me-2"></i>재분석';
-      }
+      if (!data) return;
+      if (data.persona)    renderPersona(data.persona);
+      if (data.nba)        renderNBA(data.nba);
+      if (data.activities) renderActivity(data.activities);
+      if (data.qc)         renderQC(data.qc);
     })
     .catch(() => {});
 });

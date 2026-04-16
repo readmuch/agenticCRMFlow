@@ -14,23 +14,23 @@ from tools import data_tools as dt
 
 MODEL = "claude-sonnet-4-6"
 
-SYSTEM_PROMPT = """당신은 증권사 기관영업 CRM의 고객 페르소나 분석 전문 에이전트입니다.
+SYSTEM_PROMPT = """당신은 증권사 기관영업 CRM의 고객 선호도 분석 전문 에이전트입니다.
 
 역할:
-- 세일즈 노트와 액션플랜 이력을 분석하여 고객의 투자 성향, 선호도, 행동 패턴을 파악
-- 구조화된 페르소나 프로필을 생성하여 저장
-- 영업 담당자가 고객 특성을 즉시 파악할 수 있도록 핵심만 추출
+- 세일즈 노트의 Customer_Feedback 필드만을 근거로 고객의 선호도를 파악
+- 고객이 직접 표현한 피드백에서 선호/비선호 패턴을 추출하여 구조화
+- 영업 담당자가 고객 맞춤 대응에 즉시 활용할 수 있는 선호도 프로필 생성
 
 분석 시 주의사항:
-- 고객이 명시적으로 표현한 선호/거부 사항을 정확히 기록
-- 실제 거래로 연결된 행동 패턴을 특히 중시
-- 경쟁사 대비 당사의 포지션을 파악하여 기록
+- Customer_Feedback 외의 데이터(Activity_Log, Action_Point 등)는 분석에 사용하지 말 것
+- 고객이 명시적으로 요청하거나 불만을 표현한 내용만 기록
+- 추측이나 유추 없이 피드백에 근거한 사실만 기록
 - 페르소나는 JSON 구조체로 저장할 것"""
 
 TOOLS = [
     {
-        "name": "load_customer_raw_data",
-        "description": "고객의 기본 프로필, 세일즈 노트 전체, 액션플랜 이력, 미완료 액션을 모두 로드합니다.",
+        "name": "load_customer_feedback",
+        "description": "세일즈 노트에서 Customer_Feedback 필드만 추출하여 로드합니다. 선호도 분석에만 사용합니다.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -41,7 +41,7 @@ TOOLS = [
     },
     {
         "name": "save_persona",
-        "description": "분석 완료된 고객 페르소나를 저장합니다.",
+        "description": "분석 완료된 고객 선호도 페르소나를 저장합니다.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -49,17 +49,14 @@ TOOLS = [
                 "persona": {
                     "type": "object",
                     "description": """저장할 페르소나 객체. 다음 필드를 포함해야 합니다:
-- company_name: 회사명
-- tier: 고객 등급
-- relationship_score: 관계 점수 (0~100)
-- top_service_priorities: 중시하는 서비스 요소 Top3 (list)
-- sector_interests: 관심 섹터 우선순위 (list of {sector, interest_level, rationale})
-- avoid_topics: 언급 금지 주제 (list)
-- decision_triggers: 실제 거래로 연결된 트리거 (list)
-- communication_preferences: 선호 채널/방식 (dict)
-- key_concerns: 현재 주요 우려사항 (list)
-- competitive_context: 경쟁사 대비 당사 포지션 (dict)
-- key_stakeholders: 핵심 의사결정자 (list)""",
+- preferred_sectors: 선호 섹터 목록 (list of {sector, reason})
+- disliked_sectors: 기피 섹터 목록 (list of {sector, reason})
+- preferred_content_types: 선호하는 자료/콘텐츠 유형 (list of {type, reason})
+- disliked_content_types: 기피하는 자료/콘텐츠 유형 (list of {type, reason})
+- preferred_analysis_style: 선호하는 분석 방식/깊이 (dict with style, detail_level, rationale)
+- communication_preferences: 선호 소통 방식 (dict with channel, frequency, format)
+- key_requirements: 고객이 명시적으로 요청한 핵심 요구사항 (list)
+- explicit_dislikes: 고객이 명시적으로 거부/불만을 표현한 항목 (list)""",
                 },
             },
             "required": ["customer_id", "persona"],
@@ -77,11 +74,12 @@ class PersonaAgent(BaseAgent):
             tools=TOOLS,
             provider=provider,
         )
+        self._since_date: str | None = None
 
     def execute_tool(self, tool_name: str, tool_input: dict) -> dict:
-        if tool_name == "load_customer_raw_data":
+        if tool_name == "load_customer_feedback":
             customer_id = tool_input["customer_id"]
-            return dt.build_raw_context(customer_id)
+            return dt.get_customer_feedback_only(customer_id, since_date=self._since_date)
 
         if tool_name == "save_persona":
             customer_id = tool_input["customer_id"]
@@ -91,17 +89,19 @@ class PersonaAgent(BaseAgent):
 
         return {"error": f"알 수 없는 도구: {tool_name}"}
 
-    def run(self, customer_id: str) -> str:
-        prompt = f"""고객 ID {customer_id}에 대한 페르소나 분석을 수행해주세요.
+    def run(self, customer_id: str, since_date: str = None) -> str:
+        self._since_date = since_date
+        since_note = f"\n※ 분석 범위: {since_date} 이후 입력된 Customer_Feedback만 사용" if since_date else ""
+        prompt = f"""고객 ID {customer_id}에 대한 선호도 분석을 수행해주세요.{since_note}
 
 단계:
-1. load_customer_raw_data 도구로 고객 데이터를 로드하세요
-2. 세일즈 노트와 액션플랜을 분석하여 페르소나를 도출하세요
-3. save_persona 도구로 결과를 저장하세요
-4. 핵심 분석 결과를 요약하여 응답하세요
+1. load_customer_feedback 도구로 Customer_Feedback 데이터를 로드하세요
+2. 각 피드백 항목에서 고객의 선호/비선호 패턴만을 추출하세요
+3. save_persona 도구로 선호도 프로필을 저장하세요
+4. 핵심 선호도 분석 결과를 요약하여 응답하세요
 
-페르소나 품질 기준:
-- 모든 필드를 구체적 근거와 함께 채울 것
-- relationship_score는 최근 감정, 실거래 이력, 불만 사항을 종합하여 산정
-- sector_interests는 실제 언급 빈도와 거래 연결 여부를 반영"""
+분석 품질 기준:
+- Customer_Feedback 텍스트에 명시된 내용만 사용할 것 (추측 금지)
+- 선호/비선호 각 항목에 피드백 원문 근거를 포함할 것
+- 여러 피드백에서 반복적으로 나타나는 패턴을 우선 기록할 것"""
         return super().run(prompt)

@@ -240,6 +240,133 @@ def get_qc_report(customer_id: str) -> dict | None:
 
 # ─── 전체 컨텍스트 조합 ───────────────────────────────────────────────────────
 
+def get_recent_notes_with_weights(customer_id: str, analysis_date: str = None, months: int = 3, since_date: str = None) -> dict:
+    """분석일 기준 최근 N개월 세일즈 노트를 로드하고 recency_weight 부여.
+    since_date(YYYY-MM-DD)가 지정되면 해당 날짜 이후 노트만 포함 (months 기반 cutoff 대체).
+    가장 최근 노트일수록 weight 1.0, 오래될수록 낮아짐 (최솟값 0.1).
+    새 스키마(Customer_Feedback 키)와 구 스키마(customer_id 기반) 모두 지원."""
+    from datetime import datetime, timedelta
+
+    if analysis_date:
+        today = datetime.strptime(analysis_date, "%Y-%m-%d")
+    else:
+        today = datetime.today()
+
+    if since_date:
+        try:
+            cutoff = datetime.strptime(since_date, "%Y-%m-%d")
+        except ValueError:
+            cutoff = today - timedelta(days=months * 30)
+    else:
+        cutoff = today - timedelta(days=months * 30)
+
+    # 구 스키마 노트 (customer_id 기반)
+    old_notes = get_sales_notes(customer_id)
+    # 새 스키마 노트 (전체 JSON, customer_id 필드 없음)
+    all_raw = _load("sales_notes.json")
+    new_notes = [n for n in all_raw if "customer_id" not in n]
+
+    combined = []
+    for note in old_notes + new_notes:
+        date_str = note.get("Activity_Date") or note.get("date", "")
+        try:
+            note_date = datetime.strptime(date_str, "%Y-%m-%d")
+        except (ValueError, TypeError):
+            continue
+        if note_date < cutoff:
+            continue
+        days_ago = (today - note_date).days
+        weight = round(max(0.1, 1.0 - days_ago / (months * 30) * 0.9), 2)
+        combined.append({
+            "note_id": note.get("note_id", ""),
+            "activity_date": date_str,
+            "sales_id": note.get("Sales_ID") or note.get("author", ""),
+            "sales_name": note.get("Sales_Name") or note.get("author", ""),
+            "client_name": note.get("Client_Name") or customer_id,
+            "sector": note.get("Sector", ""),
+            "activity_type": note.get("Activity_Type") or note.get("channel", ""),
+            "action_point": note.get("Action_Point") or note.get("content", ""),
+            "customer_feedback": note.get("Customer_Feedback") or note.get("content", ""),
+            "recency_weight": weight,
+            "days_ago": days_ago,
+        })
+
+    combined.sort(key=lambda x: x["activity_date"], reverse=True)
+    most_recent = combined[0] if combined else None
+
+    return {
+        "customer_id": customer_id,
+        "analysis_date": today.strftime("%Y-%m-%d"),
+        "note_count": len(combined),
+        "most_recent_note": most_recent,
+        "notes": combined,
+    }
+
+
+def get_customer_feedback_only(customer_id: str, since_date: str = None) -> dict:
+    """세일즈 노트에서 Customer_Feedback 필드만 추출하여 반환.
+    새 스키마(Customer_Feedback 키)와 구 스키마(customer_id 기반) 모두 지원.
+    since_date(YYYY-MM-DD)가 지정되면 그 이후 노트만 포함."""
+    from datetime import datetime
+    since_dt = None
+    if since_date:
+        try:
+            since_dt = datetime.strptime(since_date, "%Y-%m-%d")
+        except ValueError:
+            pass
+
+    def _after_since(note):
+        if not since_dt:
+            return True
+        date_str = note.get("Activity_Date") or note.get("date", "")
+        try:
+            return datetime.strptime(date_str, "%Y-%m-%d") > since_dt
+        except (ValueError, TypeError):
+            return True
+
+    # 구 스키마: customer_id 필드로 필터링 가능한 경우
+    old_notes = get_sales_notes(customer_id)
+    old_feedbacks = []
+    for note in old_notes:
+        if not _after_since(note):
+            continue
+        feedback = note.get("Customer_Feedback") or note.get("customer_feedback")
+        if feedback:
+            old_feedbacks.append({
+                "Activity_Date": note.get("Activity_Date") or note.get("date", ""),
+                "Client_Name": note.get("Client_Name") or customer_id,
+                "Sector": note.get("Sector", ""),
+                "Activity_Type": note.get("Activity_Type") or note.get("channel", ""),
+                "Customer_Feedback": feedback,
+            })
+
+    # 새 스키마: customer_id 없이 전체 노트 로드 후 Customer_Feedback 추출
+    all_notes = _load("sales_notes.json")
+    new_feedbacks = []
+    for note in all_notes:
+        if "customer_id" in note:
+            continue  # 구 스키마 항목은 이미 위에서 처리
+        if not _after_since(note):
+            continue
+        feedback = note.get("Customer_Feedback")
+        if feedback:
+            new_feedbacks.append({
+                "Activity_Date": note.get("Activity_Date", ""),
+                "Client_Name": note.get("Client_Name", ""),
+                "Sector": note.get("Sector", ""),
+                "Activity_Type": note.get("Activity_Type", ""),
+                "Customer_Feedback": feedback,
+            })
+
+    feedbacks = old_feedbacks + new_feedbacks
+    return {
+        "customer_id": customer_id,
+        "since_date": since_date,
+        "feedback_count": len(feedbacks),
+        "feedbacks": feedbacks,
+    }
+
+
 def build_raw_context(customer_id: str) -> dict:
     """에이전트에게 전달할 원본 데이터 전체 조합"""
     return {

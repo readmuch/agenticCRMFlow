@@ -30,6 +30,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from db.database import init_db
 from tools import data_tools as dt
 from agents.orchestrator import OrchestratorAgent
+from agents.persona_agent import PersonaAgent
+from agents.nba_agent import NBAAgent
+from agents.activity_agent import ActivityAgent
+from agents.qc_agent import QCAgent
 
 
 @asynccontextmanager
@@ -117,6 +121,40 @@ def run_pipeline(customer_id: str, q: queue.Queue, model: str = "claude-opus-4-6
     finally:
         sys.stdout = old_stdout
         q.put(None)  # sentinel: 완료 신호
+
+
+def run_single_agent(
+    customer_id: str,
+    agent_type: str,
+    q: queue.Queue,
+    model: str = "claude-opus-4-6",
+    provider: str = "anthropic",
+    since_date: str = None,
+) -> None:
+    """개별 에이전트를 단독 실행. agent_type: persona | nba | activity | qc"""
+    old_stdout = sys.stdout
+    sys.stdout = StreamCapture(q)
+    try:
+        if agent_type == "persona":
+            agent = PersonaAgent(model=model, provider=provider)
+            agent.run(customer_id, since_date=since_date)
+        elif agent_type == "nba":
+            agent = NBAAgent(model=model, provider=provider)
+            agent.run(customer_id, since_date=since_date)
+        elif agent_type == "activity":
+            agent = ActivityAgent(model=model, provider=provider)
+            agent.run(customer_id)
+        elif agent_type == "qc":
+            agent = QCAgent(model=model, provider=provider)
+            agent.run(customer_id)
+        else:
+            q.put(f"[ERROR] 알 수 없는 에이전트 타입: {agent_type}")
+    except Exception as e:
+        import traceback
+        q.put(f"[ERROR] {e}\n{traceback.format_exc()}")
+    finally:
+        sys.stdout = old_stdout
+        q.put(None)
 
 
 # ─── 헬퍼: 저장된 분석 결과 로드 ─────────────────────────────────────────────
@@ -302,7 +340,9 @@ async def api_analyze(customer_id: str):
 
                 if msg is None:
                     # 파이프라인 완료
-                    yield 'data: {"type": "done"}\n\n'
+                    from datetime import datetime as _dt
+                    _ts = _dt.now().strftime("%Y-%m-%d %H:%M:%S")
+                    yield f'data: {json.dumps({"type": "done", "completed_at": _ts})}\n\n'
                     break
 
                 if isinstance(msg, str) and msg.startswith("[ERROR]"):
@@ -329,6 +369,82 @@ async def api_analyze(customer_id: str):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# ─── 개별 에이전트 SSE 헬퍼 ──────────────────────────────────────────────────
+
+def _agent_sse(customer_id: str, agent_type: str, since_date: str = None):
+    key = f"{customer_id}:{agent_type}"
+    if key in running_set:
+        async def _busy():
+            yield f'data: {json.dumps({"type": "error", "text": "이미 실행 중입니다."})}\n\n'
+        return StreamingResponse(_busy(), media_type="text/event-stream")
+
+    async def _stream() -> AsyncGenerator[str, None]:
+        q: queue.Queue = queue.Queue()
+        running_set.add(key)
+        selected = _model_setting["model"]
+        meta = MODEL_REGISTRY.get(selected, MODEL_REGISTRY["claude-opus-4-6"])
+        t = threading.Thread(
+            target=run_single_agent,
+            args=(customer_id, agent_type, q, selected, meta["provider"], since_date),
+            daemon=True,
+        )
+        t.start()
+        try:
+            while True:
+                try:
+                    msg = q.get(timeout=0.1)
+                except queue.Empty:
+                    yield ": heartbeat\n\n"
+                    continue
+                if msg is None:
+                    from datetime import datetime as _dt
+                    ts = _dt.now().strftime("%Y-%m-%d %H:%M:%S")
+                    yield f'data: {json.dumps({"type": "done", "completed_at": ts})}\n\n'
+                    break
+                if isinstance(msg, str) and msg.startswith("[ERROR]"):
+                    yield f'data: {json.dumps({"type": "error", "text": msg[7:].strip()})}\n\n'
+                    break
+                yield f'data: {json.dumps({"type": "log", "text": msg}, ensure_ascii=False)}\n\n'
+        except Exception as e:
+            yield f'data: {json.dumps({"type": "error", "text": str(e)})}\n\n'
+        finally:
+            running_set.discard(key)
+
+    return StreamingResponse(
+        _stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.get("/api/run/persona/{customer_id}")
+async def api_run_persona(customer_id: str):
+    """Persona Agent 단독 실행 — 마지막 페르소나 업데이트 이후 노트만 사용"""
+    persona = dt.get_persona(customer_id)
+    since_date = persona.get("updated_at") if persona else None
+    return _agent_sse(customer_id, "persona", since_date)
+
+
+@app.get("/api/run/nba/{customer_id}")
+async def api_run_nba(customer_id: str):
+    """NBA Agent 단독 실행 — 마지막 NBA 제안 이후 노트만 사용"""
+    nba = dt.get_nba(customer_id)
+    since_date = nba.get("generated_at") if nba else None
+    return _agent_sse(customer_id, "nba", since_date)
+
+
+@app.get("/api/run/activity/{customer_id}")
+async def api_run_activity(customer_id: str):
+    """Activity Agent 단독 실행 — 최신 NBA 결과 기반"""
+    return _agent_sse(customer_id, "activity")
+
+
+@app.get("/api/run/qc/{customer_id}")
+async def api_run_qc(customer_id: str):
+    """QC Agent 단독 실행 — 모든 에이전트 최신 결과 검수"""
+    return _agent_sse(customer_id, "qc")
 
 
 # ─── 진입점 ───────────────────────────────────────────────────────────────────
