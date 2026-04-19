@@ -2,6 +2,8 @@
 
 AI 기반 기관투자자 영업 지원 CRM. Claude 멀티에이전트 파이프라인이 고객 데이터와 영업 노트를 분석하여 고객 선호도 프로파일링, Next Best Action 추천, 활동 일정을 자동 생성합니다.
 
+**라이브 데모**: [https://agenticcrm-production-cbeb.up.railway.app/](https://agenticcrm-production-cbeb.up.railway.app/)
+
 ---
 
 ## 주요 기능
