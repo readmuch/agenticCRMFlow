@@ -456,8 +456,11 @@ class SalesNoteCreate(BaseModel):
 @app.get("/api/models")
 async def api_models():
     """사용 가능한 모델 목록과 현재 선택 반환"""
+    openrouter_key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+    openrouter_available = bool(openrouter_key and not openrouter_key.startswith("sk-or-..."))
     return {
         "current": _model_setting["model"],
+        "openrouter_available": openrouter_available,
         "models": [
             {"id": mid, **meta}
             for mid, meta in MODEL_REGISTRY.items()
@@ -470,8 +473,15 @@ async def api_set_model(body: ModelSelect):
     """현재 사용 모델 변경"""
     if body.model not in MODEL_REGISTRY:
         return JSONResponse({"error": f"지원하지 않는 모델: {body.model}"}, status_code=400)
-    _model_setting["model"] = body.model
     meta = MODEL_REGISTRY[body.model]
+    if meta["provider"] == "openrouter":
+        key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+        if not key or key.startswith("sk-or-..."):
+            return JSONResponse(
+                {"error": "OPENROUTER_API_KEY가 설정되지 않았습니다. Railway 환경변수에 유효한 키를 추가하세요."},
+                status_code=400,
+            )
+    _model_setting["model"] = body.model
     return {"selected": body.model, "label": meta["label"], "provider": meta["provider"]}
 
 

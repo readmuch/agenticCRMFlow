@@ -14,13 +14,13 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 def get_client() -> OpenAI:
     """
     OpenRouter 클라이언트를 반환.
-    OPENROUTER_API_KEY가 없으면 즉시 오류를 발생시켜 키 누락을 명확히 알림.
+    OPENROUTER_API_KEY가 없거나 플레이스홀더이면 즉시 오류를 발생시킴.
     """
-    api_key = os.environ.get("OPENROUTER_API_KEY")
-    if not api_key:
+    api_key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+    if not api_key or api_key.startswith("sk-or-...") or api_key == "sk-or-":
         raise EnvironmentError(
             "OPENROUTER_API_KEY가 설정되지 않았습니다. "
-            ".env 파일에 OPENROUTER_API_KEY=sk-or-... 를 추가하세요."
+            "Railway 환경변수 또는 .env 파일에 유효한 OPENROUTER_API_KEY=sk-or-... 를 추가하세요."
         )
     return OpenAI(
         api_key=api_key,

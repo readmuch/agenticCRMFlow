@@ -473,13 +473,18 @@ const modelBadge  = document.getElementById('modelBadge');
 const PROVIDER_COLORS = { anthropic: 'bg-primary', openrouter: 'bg-success' };
 const PROVIDER_LABELS = { anthropic: 'Anthropic', openrouter: 'OpenRouter' };
 
+let _openrouterAvailable = true;
+
 async function loadModels() {
   try {
     const res  = await fetch('/api/models');
     const data = await res.json();
-    modelSelect.innerHTML = data.models.map(m =>
-      `<option value="${m.id}" ${m.id === data.current ? 'selected' : ''}>${m.label} — ${m.description}</option>`
-    ).join('');
+    _openrouterAvailable = data.openrouter_available !== false;
+    modelSelect.innerHTML = data.models.map(m => {
+      const isOR = m.provider === 'openrouter';
+      const unavailable = isOR && !_openrouterAvailable;
+      return `<option value="${m.id}"${m.id === data.current ? ' selected' : ''}${unavailable ? ' disabled' : ''}>${m.label} — ${m.description}${unavailable ? ' ⚠️ 키 미설정' : ''}</option>`;
+    }).join('');
     updateBadge(data.models.find(m => m.id === data.current));
   } catch (e) {
     modelSelect.innerHTML = '<option>불러오기 실패</option>';
@@ -494,7 +499,8 @@ function updateBadge(meta) {
 modelSelect.addEventListener('change', async () => {
   const res = await fetch('/api/model', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({model: modelSelect.value}) });
   const data = await res.json();
-  if (!data.error) updateBadge({ provider: data.provider });
+  if (data.error) { alert(data.error); loadModels(); return; }
+  updateBadge({ provider: data.provider });
 });
 loadModels();
 
