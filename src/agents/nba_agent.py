@@ -120,10 +120,47 @@ class NBAAgent(BaseAgent):
             }
 
         if tool_name == "save_nba_recommendations":
-            dt.save_nba(tool_input["customer_id"], tool_input["nba_data"])
+            nba_data = tool_input["nba_data"] or {}
+            nba_data = self._ensure_top_priority_comparison(nba_data)
+            dt.save_nba(tool_input["customer_id"], nba_data)
             return {"status": "saved", "customer_id": tool_input["customer_id"]}
 
         return {"error": f"알 수 없는 도구: {tool_name}"}
+
+    @staticmethod
+    def _ensure_top_priority_comparison(nba_data: dict) -> dict:
+        cmp = nba_data.get("top_priority_comparison") or {}
+        if isinstance(cmp, dict) and cmp.get("note_id"):
+            return nba_data
+
+        actions = nba_data.get("actions") or []
+        ref_notes = nba_data.get("reference_notes") or []
+        if not actions or not ref_notes:
+            return nba_data
+
+        def _rank(a):
+            try:
+                return int(a.get("rank", 999))
+            except (TypeError, ValueError):
+                return 999
+
+        def _weight(n):
+            try:
+                return float(n.get("recency_weight") or 0)
+            except (TypeError, ValueError):
+                return 0.0
+
+        top_action = min(actions, key=_rank)
+        top_note = max(ref_notes, key=_weight)
+
+        nba_data["top_priority_comparison"] = {
+            "note_id": top_note.get("note_id", ""),
+            "activity_date": top_note.get("activity_date", ""),
+            "action_point_from_note": top_note.get("action_point", ""),
+            "nba_top_priority_action": top_action.get("title", ""),
+            "rationale": top_action.get("rationale", ""),
+        }
+        return nba_data
 
     def run(self, customer_id: str, since_date: str = None) -> str:
         self._since_date = since_date
