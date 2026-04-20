@@ -65,6 +65,7 @@ TOOLS = [
                 "customer_id": {"type": "string"},
                 "activities": {
                     "type": "array",
+                    "items": {"type": "object"},
                     "description": """Activity 항목 목록. 각 항목:
 {
   id: "ACT-C001-001" 형식,
