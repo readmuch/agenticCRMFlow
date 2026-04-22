@@ -359,9 +359,17 @@
 <!-- ═══════════════════ TAB 2: 세일즈 노트 ═══════════════════ -->
 <div id="tab-notes" class="tab-pane" style="display:none">
   <div class="container py-4 pb-5">
-    <div class="d-flex align-items-center mb-3">
+    <div class="d-flex align-items-center mb-3 flex-wrap gap-2">
       <h4 class="fw-bold mb-0"><i class="bi bi-journal-text me-2 text-primary"></i>세일즈 노트 전체 조회</h4>
-      <span class="ms-3 badge bg-secondary" id="notesCount">로딩 중...</span>
+      <span class="badge bg-secondary" id="notesCount">로딩 중...</span>
+      <div class="ms-auto d-flex gap-2">
+        <button class="btn btn-sm btn-primary" onclick="openAddNoteModal()">
+          <i class="bi bi-plus-lg me-1"></i>노트 추가
+        </button>
+        <button class="btn btn-sm btn-danger" id="btnDeleteSelectedNotes" onclick="deleteSelectedNotes()" disabled>
+          <i class="bi bi-trash me-1"></i>선택 삭제 <span class="badge bg-light text-dark ms-1" id="selectedNoteCountBadge">0</span>
+        </button>
+      </div>
     </div>
 
     <!-- 필터 바 -->
@@ -417,6 +425,9 @@
         <table class="table table-hover mb-0 data-table">
           <thead class="table-dark">
             <tr>
+              <th style="width:36px" class="text-center">
+                <input type="checkbox" class="form-check-input" id="notesAllSelectAll" onclick="toggleSelectAllNotes(this)">
+              </th>
               <th onclick="sortNotes('Activity_Date')" style="cursor:pointer">날짜 <i class="bi bi-arrow-down-up"></i></th>
               <th onclick="sortNotes('_customer_name')" style="cursor:pointer">고객사 <i class="bi bi-arrow-down-up"></i></th>
               <th>영업 담당자</th>
@@ -428,7 +439,7 @@
             </tr>
           </thead>
           <tbody id="notesTableBody">
-            <tr><td colspan="8" class="text-center py-4 text-muted">데이터 로딩 중...</td></tr>
+            <tr><td colspan="9" class="text-center py-4 text-muted">데이터 로딩 중...</td></tr>
           </tbody>
         </table>
       </div>
@@ -564,6 +575,107 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="noteModalBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ 세일즈 노트 추가 모달 ═══════════════════ -->
+<div class="modal fade" id="addNoteAllModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="addNoteAllForm" onsubmit="submitAddNoteAll(event)">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-journal-plus me-2 text-warning"></i>세일즈 노트 추가</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3"><i class="bi bi-info-circle me-1"></i>고객사 · 활동일 · 영업 담당자 · 활동 로그는 필수입니다.</p>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <table class="table table-sm table-bordered mb-0">
+                <tr>
+                  <th class="table-light" style="width:35%">고객사 <span class="text-danger">*</span></th>
+                  <td>
+                    <select id="anCustomerSelect" class="form-select form-select-sm" required>
+                      <option value="">— 고객사 선택 —</option>
+                    </select>
+                  </td>
+                </tr>
+                <tr>
+                  <th class="table-light">활동일 <span class="text-danger">*</span></th>
+                  <td><input type="date" id="anActivityDate" class="form-control form-control-sm" required></td>
+                </tr>
+                <tr>
+                  <th class="table-light">영업 담당자 <span class="text-danger">*</span></th>
+                  <td><input type="text" id="anSalesName" class="form-control form-control-sm" placeholder="예) 김영민 / 부장" required></td>
+                </tr>
+                <tr>
+                  <th class="table-light">활동 유형</th>
+                  <td>
+                    <select id="anActivityType" class="form-select form-select-sm">
+                      <option>대면미팅</option><option>전화</option><option>이메일</option>
+                      <option>채팅</option><option>화상미팅</option><option>컨퍼런스콜</option><option>기타</option>
+                    </select>
+                  </td>
+                </tr>
+                <tr>
+                  <th class="table-light">고객 유형</th>
+                  <td>
+                    <select id="anClientType" class="form-select form-select-sm">
+                      <option>운용사</option><option>연기금</option><option>보험사</option>
+                      <option>은행/저축은행</option><option>증권사</option><option>기타</option>
+                    </select>
+                  </td>
+                </tr>
+                <tr>
+                  <th class="table-light">섹터</th>
+                  <td><input type="text" id="anSector" class="form-control form-control-sm" placeholder="예) 반도체, 방산"></td>
+                </tr>
+                <tr>
+                  <th class="table-light">언어</th>
+                  <td>
+                    <select id="anLanguage" class="form-select form-select-sm">
+                      <option value="KR" selected>한국어 (KR)</option>
+                      <option value="EN">English (EN)</option>
+                    </select>
+                  </td>
+                </tr>
+              </table>
+            </div>
+            <div class="col-md-6">
+              <table class="table table-sm table-bordered mb-0">
+                <tr>
+                  <th class="table-light" style="width:35%">담당자 직책</th>
+                  <td><input type="text" id="anContactRole" class="form-control form-control-sm" placeholder="예) 펀드매니저"></td>
+                </tr>
+                <tr>
+                  <th class="table-light">담당자 이름</th>
+                  <td><input type="text" id="anContactName" class="form-control form-control-sm" placeholder="예) 박지훈 / 팀장"></td>
+                </tr>
+              </table>
+              <div class="mt-3">
+                <label class="small fw-semibold d-block mb-1"><i class="bi bi-chat-left-text me-1 text-primary"></i>활동 로그 <span class="text-danger">*</span></label>
+                <textarea id="anActivityLog" class="form-control form-control-sm" rows="3" placeholder="미팅·통화 내용을 상세히 기록" required></textarea>
+              </div>
+              <div class="mt-2">
+                <label class="small fw-semibold d-block mb-1"><i class="bi bi-chat-right-quote me-1 text-warning"></i>Customer Feedback</label>
+                <textarea id="anCustomerFeedback" class="form-control form-control-sm" rows="2" placeholder="고객의 요청·반응·의견"></textarea>
+              </div>
+              <div class="mt-2">
+                <label class="small fw-semibold d-block mb-1"><i class="bi bi-check2-circle me-1 text-success"></i>Action Point</label>
+                <textarea id="anActionPoint" class="form-control form-control-sm" rows="2" placeholder="후속 조치"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="text-danger small mt-3" id="addNoteAllErr"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+          <button type="submit" class="btn btn-warning btn-sm" id="anSubmitBtn">
+            <i class="bi bi-check2-circle me-1"></i>입력 완료
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -1101,7 +1213,7 @@ async function loadAllNotes() {
     renderNotesTable();
   } catch (e) {
     document.getElementById('notesTableBody').innerHTML =
-      `<tr><td colspan="8" class="text-center text-danger">로딩 실패: ${e.message}</td></tr>`;
+      `<tr><td colspan="9" class="text-center text-danger">로딩 실패: ${e.message}</td></tr>`;
   }
 }
 
@@ -1166,11 +1278,19 @@ function renderNotesTable() {
   document.getElementById('notesCount').textContent = `${filteredNotes.length}건`;
   const tbody = document.getElementById('notesTableBody');
   if (!filteredNotes.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">검색 결과가 없습니다.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">검색 결과가 없습니다.</td></tr>';
+    refreshNoteSelectionUI();
     return;
   }
-  tbody.innerHTML = filteredNotes.map((n, i) => `
+  tbody.innerHTML = filteredNotes.map((n, i) => {
+    const nid = n.note_id || '';
+    const checked = nid && selectedNoteIds.has(nid) ? 'checked' : '';
+    const disabled = nid ? '' : 'disabled';
+    return `
     <tr style="cursor:pointer" onclick="showNoteDetail(${i})">
+      <td class="text-center" onclick="event.stopPropagation()">
+        <input type="checkbox" class="form-check-input note-row-check" data-nid="${escHtml(nid)}" ${checked} ${disabled} onchange="onNoteRowCheck(this)">
+      </td>
       <td class="text-nowrap">${n.Activity_Date || n.date || '—'}</td>
       <td><a href="/customer/${n._customer_id}" class="fw-semibold text-decoration-none" onclick="event.stopPropagation()">${n._customer_name || '—'}</a></td>
       <td class="small text-muted">${n.Sales_Name || '—'}</td>
@@ -1179,8 +1299,178 @@ function renderNotesTable() {
       <td class="small text-muted">${n.Contact_Name || '—'}</td>
       <td class="text-truncate-cell small text-muted">${n.Action_Point || '—'}</td>
       <td><button class="btn btn-sm btn-outline-secondary py-0" onclick="event.stopPropagation();showNoteDetail(${i})"><i class="bi bi-eye"></i></button></td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
+  refreshNoteSelectionUI();
+}
+
+// ─── 세일즈 노트 선택/삭제 ──────────────────────────────────────────────────
+const selectedNoteIds = new Set();
+
+function onNoteRowCheck(el) {
+  const nid = el.dataset.nid;
+  if (!nid) return;
+  if (el.checked) selectedNoteIds.add(nid);
+  else selectedNoteIds.delete(nid);
+  refreshNoteSelectionUI();
+}
+
+function toggleSelectAllNotes(el) {
+  document.querySelectorAll('.note-row-check').forEach(cb => {
+    if (cb.disabled) return;
+    cb.checked = el.checked;
+    const nid = cb.dataset.nid;
+    if (!nid) return;
+    if (el.checked) selectedNoteIds.add(nid);
+    else selectedNoteIds.delete(nid);
+  });
+  refreshNoteSelectionUI();
+}
+
+function refreshNoteSelectionUI() {
+  const visibleIds = new Set(filteredNotes.map(n => n.note_id).filter(Boolean));
+  for (const id of Array.from(selectedNoteIds)) {
+    if (!visibleIds.has(id)) selectedNoteIds.delete(id);
+  }
+  const count = selectedNoteIds.size;
+  const btn = document.getElementById('btnDeleteSelectedNotes');
+  const badge = document.getElementById('selectedNoteCountBadge');
+  if (btn) btn.disabled = count === 0;
+  if (badge) badge.textContent = count;
+  const header = document.getElementById('notesAllSelectAll');
+  if (header) {
+    const selectable = filteredNotes.filter(n => n.note_id).length;
+    header.checked = selectable > 0 && count === selectable;
+    header.indeterminate = count > 0 && count < selectable;
+  }
+}
+
+async function deleteSelectedNotes() {
+  const ids = Array.from(selectedNoteIds);
+  if (!ids.length) return;
+  const msg =
+    `⚠️ 경고: 선택한 ${ids.length}건의 세일즈 노트를 영구 삭제합니다.\n\n` +
+    `이 작업은 되돌릴 수 없습니다.\n` +
+    `단, 해당 노트를 기반으로 이미 생성된 페르소나·NBA·Activity·QC 분석 결과는 그대로 유지됩니다.\n\n` +
+    `정말 삭제하시겠습니까?`;
+  if (!confirm(msg)) return;
+
+  const btn = document.getElementById('btnDeleteSelectedNotes');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>삭제 중...';
+  try {
+    const res = await fetch('/api/sales-notes', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note_ids: ids }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    selectedNoteIds.clear();
+    await loadAllNotes();
+    alert(`${data.deleted}건 삭제 완료${data.missing?.length ? ` (누락: ${data.missing.join(', ')})` : ''}`);
+  } catch (e) {
+    alert(`삭제 실패: ${e.message}`);
+  } finally {
+    btn.innerHTML = orig;
+    refreshNoteSelectionUI();
+  }
+}
+
+// ─── 세일즈 노트 추가 모달 ────────────────────────────────────────────────
+function openAddNoteModal() {
+  const form = document.getElementById('addNoteAllForm');
+  if (form) form.reset();
+  document.getElementById('addNoteAllErr').textContent = '';
+  // 고객사 드롭다운 채우기 (allCustomers — 고객 전체조회 탭에서 로드됨)
+  const sel = document.getElementById('anCustomerSelect');
+  const customers = (typeof allCustomers !== 'undefined' && allCustomers.length) ? allCustomers : [];
+  if (!customers.length) {
+    // 아직 로드되지 않았으면 즉시 로드 (노트 탭만 방문한 경우)
+    fetch('/api/customers').then(r => r.json()).then(list => {
+      allCustomers = list;
+      fillAddNoteCustomerSelect(list);
+    });
+  } else {
+    fillAddNoteCustomerSelect(customers);
+  }
+  // 오늘 날짜 기본값
+  document.getElementById('anActivityDate').value = new Date().toISOString().split('T')[0];
+  new bootstrap.Modal(document.getElementById('addNoteAllModal')).show();
+}
+
+function fillAddNoteCustomerSelect(customers) {
+  const sel = document.getElementById('anCustomerSelect');
+  sel.innerHTML = '<option value="">— 고객사 선택 —</option>' +
+    customers
+      .slice()
+      .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''))
+      .map(c => `<option value="${escHtml(c.customer_id)}" data-type="${escHtml(c.company_type || '')}">${escHtml(c.company_name || c.customer_id)}</option>`)
+      .join('');
+}
+
+async function submitAddNoteAll(event) {
+  event.preventDefault();
+  const errEl = document.getElementById('addNoteAllErr');
+  errEl.textContent = '';
+
+  const getVal = id => document.getElementById(id).value.trim();
+  const sel = document.getElementById('anCustomerSelect');
+  const customerId = sel.value;
+  if (!customerId) { errEl.textContent = '고객사를 선택하세요.'; return; }
+  const clientName = sel.options[sel.selectedIndex]?.textContent || '';
+
+  const activityDate = getVal('anActivityDate');
+  const salesName = getVal('anSalesName');
+  const activityLog = getVal('anActivityLog');
+  if (!activityDate) { errEl.textContent = '활동일은 필수입니다.'; return; }
+  if (!salesName)    { errEl.textContent = '영업 담당자는 필수입니다.'; return; }
+  if (!activityLog)  { errEl.textContent = '활동 로그는 필수입니다.'; return; }
+
+  const payload = {
+    customer_id: customerId,
+    Sales_Name: salesName,
+    Activity_Date: activityDate,
+    Client_Type: getVal('anClientType'),
+    Client_Name: clientName,
+    Contact_Role: getVal('anContactRole'),
+    Contact_Name: getVal('anContactName'),
+    Sector: getVal('anSector'),
+    Activity_Type: getVal('anActivityType'),
+    Activity_Log: activityLog,
+    Customer_Feedback: getVal('anCustomerFeedback'),
+    Action_Point: getVal('anActionPoint'),
+    Language: getVal('anLanguage') || 'KR',
+  };
+
+  const submitBtn = document.getElementById('anSubmitBtn');
+  const orig = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>저장 중...';
+  try {
+    const res = await fetch('/api/sales-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    const saved = await res.json();
+    bootstrap.Modal.getInstance(document.getElementById('addNoteAllModal')).hide();
+    await loadAllNotes();
+    alert(`세일즈 노트가 추가되었습니다. (${saved.note_id || ''})`);
+  } catch (e) {
+    errEl.textContent = `저장 실패: ${e.message}`;
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = orig;
+  }
 }
 
 function showNoteDetail(i) {

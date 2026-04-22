@@ -462,6 +462,10 @@ class CustomerDelete(BaseModel):
     customer_ids: list[str]
 
 
+class SalesNoteDelete(BaseModel):
+    note_ids: list[str]
+
+
 class SalesNoteCreate(BaseModel):
     customer_id: str
     Sales_Name: str
@@ -526,6 +530,16 @@ async def api_add_sales_note(body: SalesNoteCreate):
     existing = dt.get_sales_notes(body.customer_id)
     note_data["Sales_ID"] = f"S{len(existing) + 1:02d}"
     return dt.add_sales_note(body.customer_id, note_data)
+
+
+@app.delete("/api/sales-notes")
+async def api_delete_sales_notes(body: SalesNoteDelete):
+    """영업 노트 일괄 삭제 — 연관 페르소나/NBA/Activity/QC는 건드리지 않음."""
+    from fastapi import HTTPException
+    ids = [nid for nid in body.note_ids if nid]
+    if not ids:
+        raise HTTPException(status_code=400, detail="삭제할 note_id가 없습니다.")
+    return dt.delete_sales_notes(ids)
 
 
 @app.post("/api/sales-notes/upload")

@@ -242,6 +242,27 @@ def add_sales_note(customer_id: str, note_data: dict) -> dict:
     return note_data
 
 
+def delete_sales_notes(note_ids: list[str]) -> dict:
+    """영업 노트 일괄 삭제. 연관 페르소나/NBA/Activity/QC는 유지 (캐스케이드 없음).
+    반환: {"deleted": N, "missing": [...]}"""
+    from db.database import SalesNote
+    ids = [nid for nid in (note_ids or []) if nid]
+    if not ids:
+        return {"deleted": 0, "missing": []}
+
+    deleted, missing = 0, []
+    with _session() as session:
+        for nid in ids:
+            row = session.query(SalesNote).filter_by(note_id=nid).first()
+            if not row:
+                missing.append(nid)
+                continue
+            session.delete(row)
+            deleted += 1
+        session.commit()
+    return {"deleted": deleted, "missing": missing}
+
+
 def seed_sales_notes_if_empty() -> None:
     """JSON → DB 초기 이전 (DB가 비어있을 때만 실행).
     구 스키마(customer_id/note_id 보유)와 새 스키마(Client_Name 기반) 모두 지원."""
