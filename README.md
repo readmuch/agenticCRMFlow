@@ -305,8 +305,7 @@ agenticCRM/
 | Claude Opus 4.6 | Anthropic | 최고 성능 (기본값) |
 | Claude Sonnet 4.6 | Anthropic | 빠른 속도 · 낮은 비용 |
 | Gemma 4 26B | OpenRouter (무료) | rate limit 있음 |
-| Llama 4 Scout | OpenRouter (무료) | rate limit 있음 |
-| DeepSeek V3 | OpenRouter (무료) | rate limit 있음 |
+| GPT-OSS 120B | OpenRouter (무료) | rate limit 있음 |
 | MiniMax M2.5 | OpenRouter (무료) | rate limit 있음 |
 
 ---
