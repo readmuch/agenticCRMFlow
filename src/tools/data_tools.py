@@ -136,6 +136,64 @@ def get_all_customers() -> list:
     return customers
 
 
+def next_customer_id() -> str:
+    """기존 customer_id 최대값 + 1로 새 ID 생성 (C001, C002 … 패턴)."""
+    import re
+    existing = get_all_customers()
+    max_n = 0
+    for c in existing:
+        cid = c.get("customer_id") or ""
+        m = re.match(r"^C(\d+)$", cid)
+        if m:
+            max_n = max(max_n, int(m.group(1)))
+    return f"C{max_n + 1:03d}"
+
+
+def create_customer(customer: dict) -> dict:
+    """신규 고객을 DB에 저장. customer_id 미지정 시 자동 채번.
+    중복 시 ValueError 발생."""
+    from db.database import Customer
+    cid = (customer.get("customer_id") or "").strip()
+    if not cid:
+        cid = next_customer_id()
+        customer["customer_id"] = cid
+    with _session() as session:
+        if session.query(Customer).filter_by(customer_id=cid).first():
+            raise ValueError(f"이미 존재하는 customer_id: {cid}")
+        session.add(Customer(customer_id=cid, data=customer))
+        session.commit()
+    return customer
+
+
+def delete_customers(customer_ids: list[str]) -> dict:
+    """고객 및 연관 레코드(sales_notes / personas / nba_results / activities / qc_reports) 일괄 삭제.
+    반환: {"deleted": N, "missing": [...]}"""
+    from db.database import (
+        Customer, SalesNote, Persona, NBAResult, ActivitySchedule, QCReport,
+    )
+    ids = [cid for cid in (customer_ids or []) if cid]
+    if not ids:
+        return {"deleted": 0, "missing": []}
+
+    deleted, missing = 0, []
+    with _session() as session:
+        for cid in ids:
+            row = session.query(Customer).filter_by(customer_id=cid).first()
+            if not row:
+                missing.append(cid)
+                continue
+            # 캐스케이드: 연관 레코드 우선 삭제
+            session.query(SalesNote).filter_by(customer_id=cid).delete()
+            session.query(Persona).filter_by(customer_id=cid).delete()
+            session.query(NBAResult).filter_by(customer_id=cid).delete()
+            session.query(ActivitySchedule).filter_by(customer_id=cid).delete()
+            session.query(QCReport).filter_by(customer_id=cid).delete()
+            session.delete(row)
+            deleted += 1
+        session.commit()
+    return {"deleted": deleted, "missing": missing}
+
+
 def get_sales_notes(customer_id: str) -> list:
     """영업 노트 조회 (DB 우선, 빈 결과면 JSON에서 Client_Name으로 보완)"""
     try:

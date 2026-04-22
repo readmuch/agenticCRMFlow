@@ -437,6 +437,30 @@ class ModelSelect(BaseModel):
     model: str
 
 
+class CustomerContact(BaseModel):
+    name: str = ""
+    title: str = ""
+    email: str = ""
+    phone: str = ""
+
+
+class CustomerCreate(BaseModel):
+    customer_id: str = ""  # 비어있으면 서버가 자동 채번
+    company_name: str
+    company_type: str = ""
+    aum_billion_krw: float = 0
+    contact: CustomerContact = CustomerContact()
+    investment_mandate: list[str] = []
+    benchmark: str = ""
+    relationship_since: str = ""
+    tier: str = ""
+    assigned_salesperson: str = ""
+
+
+class CustomerDelete(BaseModel):
+    customer_ids: list[str]
+
+
 class SalesNoteCreate(BaseModel):
     customer_id: str
     Sales_Name: str
@@ -594,6 +618,29 @@ async def api_bulk_commit_sales_notes(body: BulkCommitBody):
 @app.get("/api/customers")
 async def api_customers():
     return dt.get_all_customers()
+
+
+@app.post("/api/customers")
+async def api_create_customer(body: CustomerCreate):
+    """신규 고객 생성. customer_id 비어 있으면 자동 채번."""
+    from fastapi import HTTPException
+    payload = body.model_dump()
+    if not payload.get("company_name", "").strip():
+        raise HTTPException(status_code=400, detail="회사명은 필수입니다.")
+    try:
+        return dt.create_customer(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.delete("/api/customers")
+async def api_delete_customers(body: CustomerDelete):
+    """고객과 연관 레코드(sales_notes/personas/nba/activities/qc) 일괄 삭제."""
+    from fastapi import HTTPException
+    ids = [cid for cid in body.customer_ids if cid]
+    if not ids:
+        raise HTTPException(status_code=400, detail="삭제할 customer_id가 없습니다.")
+    return dt.delete_customers(ids)
 
 
 @app.get("/api/all-sales-notes")

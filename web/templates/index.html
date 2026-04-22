@@ -280,9 +280,17 @@
 <!-- ═══════════════════ TAB: 고객 전체 조회 ═══════════════════ -->
 <div id="tab-customersAll" class="tab-pane" style="display:none">
   <div class="container py-4 pb-5">
-    <div class="d-flex align-items-center mb-3">
+    <div class="d-flex align-items-center mb-3 flex-wrap gap-2">
       <h4 class="fw-bold mb-0"><i class="bi bi-table me-2 text-primary"></i>고객 전체 조회</h4>
-      <span class="ms-3 badge bg-secondary" id="customersAllCount">로딩 중...</span>
+      <span class="badge bg-secondary" id="customersAllCount">로딩 중...</span>
+      <div class="ms-auto d-flex gap-2">
+        <button class="btn btn-sm btn-primary" onclick="openAddCustomerModal()">
+          <i class="bi bi-plus-lg me-1"></i>고객 추가
+        </button>
+        <button class="btn btn-sm btn-danger" id="btnDeleteSelected" onclick="deleteSelectedCustomers()" disabled>
+          <i class="bi bi-trash me-1"></i>선택 삭제 <span class="badge bg-light text-dark ms-1" id="selectedCountBadge">0</span>
+        </button>
+      </div>
     </div>
 
     <!-- 필터 바 -->
@@ -322,6 +330,9 @@
         <table class="table table-hover mb-0 data-table">
           <thead class="table-dark">
             <tr>
+              <th style="width:36px" class="text-center">
+                <input type="checkbox" class="form-check-input" id="custAllSelectAll" onclick="toggleSelectAllCustomers(this)">
+              </th>
               <th onclick="sortCustomersAll('tier')" style="cursor:pointer">등급 <i class="bi bi-arrow-down-up"></i></th>
               <th onclick="sortCustomersAll('customer_id')" style="cursor:pointer">ID <i class="bi bi-arrow-down-up"></i></th>
               <th onclick="sortCustomersAll('company_name')" style="cursor:pointer">회사명 <i class="bi bi-arrow-down-up"></i></th>
@@ -337,7 +348,7 @@
             </tr>
           </thead>
           <tbody id="customersAllTableBody">
-            <tr><td colspan="12" class="text-center py-4 text-muted">데이터 로딩 중...</td></tr>
+            <tr><td colspan="13" class="text-center py-4 text-muted">데이터 로딩 중...</td></tr>
           </tbody>
         </table>
       </div>
@@ -573,6 +584,116 @@
   </div>
 </div>
 
+<!-- ═══════════════════ 고객 추가 모달 ═══════════════════ -->
+<div class="modal fade" id="addCustomerModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="addCustomerForm" onsubmit="submitAddCustomer(event)">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>고객 추가</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3"><i class="bi bi-info-circle me-1"></i>회사명만 필수입니다. 고객 ID는 비워두면 자동 채번(C0XX)됩니다.</p>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <table class="table table-sm table-bordered mb-0">
+                <tr>
+                  <th class="table-light" style="width:35%">회사명 <span class="text-danger">*</span></th>
+                  <td><input type="text" id="acCompanyName" class="form-control form-control-sm" required></td>
+                </tr>
+                <tr>
+                  <th class="table-light">고객 ID</th>
+                  <td><input type="text" id="acCustomerId" class="form-control form-control-sm" placeholder="자동 채번 (C0XX)"></td>
+                </tr>
+                <tr>
+                  <th class="table-light">유형</th>
+                  <td>
+                    <input list="customerTypeList" id="acCompanyType" class="form-control form-control-sm" placeholder="예: 자산운용사">
+                    <datalist id="customerTypeList">
+                      <option value="자산운용사">
+                      <option value="연기금">
+                      <option value="헤지펀드">
+                      <option value="보험사">
+                      <option value="공제회">
+                      <option value="은행">
+                    </datalist>
+                  </td>
+                </tr>
+                <tr>
+                  <th class="table-light">AUM (억원)</th>
+                  <td><input type="number" id="acAum" class="form-control form-control-sm" min="0" step="1" placeholder="예: 8500"></td>
+                </tr>
+                <tr>
+                  <th class="table-light">Benchmark</th>
+                  <td>
+                    <input list="benchmarkList" id="acBenchmark" class="form-control form-control-sm" placeholder="예: KOSPI200">
+                    <datalist id="benchmarkList">
+                      <option value="KOSPI">
+                      <option value="KOSPI200">
+                      <option value="KOSDAQ150">
+                    </datalist>
+                  </td>
+                </tr>
+                <tr>
+                  <th class="table-light">거래 시작</th>
+                  <td><input type="date" id="acRelSince" class="form-control form-control-sm"></td>
+                </tr>
+                <tr>
+                  <th class="table-light">등급</th>
+                  <td>
+                    <select id="acTier" class="form-select form-select-sm">
+                      <option value="">—</option>
+                      <option value="S">S</option>
+                      <option value="A">A</option>
+                      <option value="B">B</option>
+                    </select>
+                  </td>
+                </tr>
+                <tr>
+                  <th class="table-light">담당 영업</th>
+                  <td><input type="text" id="acSalesperson" class="form-control form-control-sm"></td>
+                </tr>
+              </table>
+            </div>
+            <div class="col-md-6">
+              <table class="table table-sm table-bordered mb-0">
+                <tr>
+                  <th class="table-light" style="width:35%">담당자</th>
+                  <td><input type="text" id="acContactName" class="form-control form-control-sm"></td>
+                </tr>
+                <tr>
+                  <th class="table-light">직함</th>
+                  <td><input type="text" id="acContactTitle" class="form-control form-control-sm"></td>
+                </tr>
+                <tr>
+                  <th class="table-light">이메일</th>
+                  <td><input type="email" id="acContactEmail" class="form-control form-control-sm"></td>
+                </tr>
+                <tr>
+                  <th class="table-light">전화</th>
+                  <td><input type="text" id="acContactPhone" class="form-control form-control-sm"></td>
+                </tr>
+              </table>
+              <div class="mt-3">
+                <label class="small text-muted d-block mb-1 fw-semibold"><i class="bi bi-bookmark-star me-1"></i>투자 만데이트</label>
+                <input type="text" id="acMandates" class="form-control form-control-sm" placeholder="콤마로 구분 (예: 국내주식 액티브, 반도체)">
+              </div>
+            </div>
+          </div>
+          <div class="text-danger small mt-3" id="addCustErr"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+          <button type="submit" class="btn btn-primary btn-sm" id="acSubmitBtn">
+            <i class="bi bi-check2-circle me-1"></i>입력 완료
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════ 페르소나 상세 모달 ═══════════════════ -->
 <div class="modal fade" id="personaDetailModal" tabindex="-1">
   <div class="modal-dialog modal-xl">
@@ -676,7 +797,7 @@ async function loadAllCustomers() {
     renderCustomersAllTable();
   } catch (e) {
     document.getElementById('customersAllTableBody').innerHTML =
-      `<tr><td colspan="12" class="text-center text-danger">로딩 실패: ${e.message}</td></tr>`;
+      `<tr><td colspan="13" class="text-center text-danger">로딩 실패: ${e.message}</td></tr>`;
   }
 }
 
@@ -728,7 +849,8 @@ function renderCustomersAllTable() {
   document.getElementById('customersAllCount').textContent = `${filteredCustomers.length}명`;
   const tbody = document.getElementById('customersAllTableBody');
   if (!filteredCustomers.length) {
-    tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4 text-muted">검색 결과가 없습니다.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center py-4 text-muted">검색 결과가 없습니다.</td></tr>';
+    refreshSelectionUI();
     return;
   }
   tbody.innerHTML = filteredCustomers.map((c, i) => {
@@ -736,8 +858,12 @@ function renderCustomersAllTable() {
     const mandates = Array.isArray(c.investment_mandate) ? c.investment_mandate : [];
     const mHtml = mandates.slice(0,2).map(m => `<span class="badge bg-light text-dark border me-1" style="font-size:.68rem">${escHtml(m)}</span>`).join('')
       + (mandates.length > 2 ? `<span class="text-muted small">+${mandates.length-2}</span>` : '');
+    const checked = selectedCustomerIds.has(c.customer_id) ? 'checked' : '';
     return `
       <tr style="cursor:pointer" onclick="showCustomerDetail(${i})">
+        <td class="text-center" onclick="event.stopPropagation()">
+          <input type="checkbox" class="form-check-input cust-row-check" data-cid="${escHtml(c.customer_id || '')}" ${checked} onchange="onCustomerRowCheck(this)">
+        </td>
         <td>${c.tier ? `<span class="tier-badge tier-${c.tier}">${c.tier}</span>` : '—'}</td>
         <td class="small text-muted">${escHtml(c.customer_id || '—')}</td>
         <td class="fw-semibold"><a href="/customer/${c.customer_id}" class="text-decoration-none" onclick="event.stopPropagation()">${escHtml(c.company_name || '—')}</a></td>
@@ -755,6 +881,163 @@ function renderCustomersAllTable() {
         <td><button class="btn btn-sm btn-outline-secondary py-0" onclick="event.stopPropagation();showCustomerDetail(${i})"><i class="bi bi-eye"></i></button></td>
       </tr>`;
   }).join('');
+  refreshSelectionUI();
+}
+
+// ─── 체크박스/선택 삭제 ───────────────────────────────────────────────────────
+const selectedCustomerIds = new Set();
+
+function onCustomerRowCheck(el) {
+  const cid = el.dataset.cid;
+  if (!cid) return;
+  if (el.checked) selectedCustomerIds.add(cid);
+  else selectedCustomerIds.delete(cid);
+  refreshSelectionUI();
+}
+
+function toggleSelectAllCustomers(el) {
+  document.querySelectorAll('.cust-row-check').forEach(cb => {
+    cb.checked = el.checked;
+    const cid = cb.dataset.cid;
+    if (!cid) return;
+    if (el.checked) selectedCustomerIds.add(cid);
+    else selectedCustomerIds.delete(cid);
+  });
+  refreshSelectionUI();
+}
+
+function refreshSelectionUI() {
+  // 필터링된 결과 외의 선택은 제거 (보이지 않는 항목을 실수로 삭제하지 않기 위함)
+  const visibleIds = new Set(filteredCustomers.map(c => c.customer_id));
+  for (const id of Array.from(selectedCustomerIds)) {
+    if (!visibleIds.has(id)) selectedCustomerIds.delete(id);
+  }
+  const count = selectedCustomerIds.size;
+  const btn = document.getElementById('btnDeleteSelected');
+  const badge = document.getElementById('selectedCountBadge');
+  if (btn) btn.disabled = count === 0;
+  if (badge) badge.textContent = count;
+  // 헤더 전체선택 체크 상태 동기화
+  const header = document.getElementById('custAllSelectAll');
+  if (header) {
+    const visibleCount = filteredCustomers.length;
+    header.checked = visibleCount > 0 && count === visibleCount;
+    header.indeterminate = count > 0 && count < visibleCount;
+  }
+}
+
+async function deleteSelectedCustomers() {
+  const ids = Array.from(selectedCustomerIds);
+  if (!ids.length) return;
+  const names = filteredCustomers.filter(c => ids.includes(c.customer_id)).map(c => c.company_name || c.customer_id);
+  const preview = names.slice(0, 5).join(', ') + (names.length > 5 ? ` 외 ${names.length - 5}건` : '');
+  const msg =
+    `⚠️ 경고: 아래 ${ids.length}개 고객을 삭제합니다.\n\n` +
+    `[${preview}]\n\n` +
+    `이 작업은 되돌릴 수 없으며, 해당 고객의 세일즈 노트·페르소나·NBA·활동·QC 결과까지 모두 삭제됩니다.\n\n` +
+    `정말 삭제하시겠습니까?`;
+  if (!confirm(msg)) return;
+
+  const btn = document.getElementById('btnDeleteSelected');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>삭제 중...';
+  try {
+    const res = await fetch('/api/customers', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_ids: ids }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    selectedCustomerIds.clear();
+    // 관련 탭 캐시 무효화
+    tabLoaded.notes = false;
+    tabLoaded.personas = false;
+    await loadAllCustomers();
+    alert(`${data.deleted}건 삭제 완료${data.missing?.length ? ` (누락: ${data.missing.join(', ')})` : ''}`);
+  } catch (e) {
+    alert(`삭제 실패: ${e.message}`);
+  } finally {
+    btn.innerHTML = orig;
+    refreshSelectionUI();
+  }
+}
+
+// ─── 고객 추가 모달 ───────────────────────────────────────────────────────────
+function openAddCustomerModal() {
+  // 폼 초기화
+  const form = document.getElementById('addCustomerForm');
+  if (form) form.reset();
+  document.getElementById('addCustErr').textContent = '';
+  new bootstrap.Modal(document.getElementById('addCustomerModal')).show();
+}
+
+async function submitAddCustomer(event) {
+  event.preventDefault();
+  const errEl = document.getElementById('addCustErr');
+  errEl.textContent = '';
+
+  const getVal = id => document.getElementById(id).value.trim();
+  const companyName = getVal('acCompanyName');
+  if (!companyName) {
+    errEl.textContent = '회사명은 필수입니다.';
+    return;
+  }
+  const aumRaw = getVal('acAum');
+  const aum = aumRaw ? Number(aumRaw) : 0;
+  if (aumRaw && Number.isNaN(aum)) {
+    errEl.textContent = 'AUM은 숫자여야 합니다.';
+    return;
+  }
+  const mandates = getVal('acMandates')
+    .split(',').map(s => s.trim()).filter(Boolean);
+
+  const payload = {
+    customer_id: getVal('acCustomerId'),
+    company_name: companyName,
+    company_type: getVal('acCompanyType'),
+    aum_billion_krw: aum,
+    tier: getVal('acTier'),
+    benchmark: getVal('acBenchmark'),
+    relationship_since: getVal('acRelSince'),
+    assigned_salesperson: getVal('acSalesperson'),
+    investment_mandate: mandates,
+    contact: {
+      name: getVal('acContactName'),
+      title: getVal('acContactTitle'),
+      email: getVal('acContactEmail'),
+      phone: getVal('acContactPhone'),
+    },
+  };
+
+  const submitBtn = document.getElementById('acSubmitBtn');
+  const orig = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>저장 중...';
+  try {
+    const res = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    const saved = await res.json();
+    bootstrap.Modal.getInstance(document.getElementById('addCustomerModal')).hide();
+    await loadAllCustomers();
+    alert(`고객 [${saved.company_name}] (${saved.customer_id}) 이(가) 추가되었습니다.`);
+  } catch (e) {
+    errEl.textContent = `저장 실패: ${e.message}`;
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = orig;
+  }
 }
 
 function showCustomerDetail(i) {
