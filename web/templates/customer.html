@@ -356,6 +356,10 @@
 const CUSTOMER_ID   = "{{ customer_id }}";
 const COMPANY_NAME  = "{{ customer.company_name }}";
 
+// 노트 ↔ NBA 비교 패널의 red-flag 경고를 위한 전역 캐시
+let _customerSalesNotes = [];
+let _lastNBAData = null;
+
 // ─── 유틸리티 ─────────────────────────────────────────────────────────────────
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -607,6 +611,7 @@ function renderNBA(nba) {
   const el = document.getElementById('content-nba');
   const st = document.getElementById('status-nba');
   if (!nba) { el.innerHTML = '<div class="text-muted small">NBA 데이터가 없습니다.</div>'; return; }
+  _lastNBAData = nba;  // 노트 로드 지연 시 재렌더링에 사용
 
   if (nba.generated_at) {
     st.innerHTML = `<span class="text-muted"><i class="bi bi-calendar-check me-1"></i>마지막 제안: ${escHtml(nba.generated_at)}</span>`;
@@ -626,14 +631,33 @@ function renderNBA(nba) {
         <td class="text-muted" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(n.action_point||'')}</td>
       </tr>`).join('');
 
-    // top priority comparison
+    // top priority comparison (노트의 _red_flag 메타를 조인해 경고를 덧붙임)
     const cmp = nba.top_priority_comparison || {};
+    const noteForCmp = cmp.note_id ? (_customerSalesNotes || []).find(n => n.note_id === cmp.note_id) : null;
+    const isFlagged = !!(noteForCmp && noteForCmp._red_flag);
+    const matched = isFlagged ? (noteForCmp._red_flag_matched || '') : '';
+    const flagReason = isFlagged ? (noteForCmp._red_flag_reason || '') : '';
+    const flaggedWarningRow = isFlagged ? `
+      <tr>
+        <td colspan="3" class="pt-2 pb-2" style="color:#dc3545; font-weight:700; font-size:.9rem; background:#fff5f5; border-top:1px solid #f5c2c7">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i>
+          <span style="text-decoration:underline">경고:</span> 이 노트의 Action Point는 고객 페르소나의 <strong>'명시적 불만/거부 항목'</strong>에 해당합니다 — <span style="background:#fde2e4;padding:1px 6px;border-radius:4px">"${escHtml(matched)}"</span>
+          ${flagReason ? `<div class="mt-1" style="color:#842029;font-weight:500;font-size:.82rem">↳ ${escHtml(flagReason)}</div>` : ''}
+        </td>
+      </tr>` : '';
+    const cmpCardClass = isFlagged ? 'card bg-light p-3 mb-3 border border-danger border-3' : 'card bg-light border-0 p-3 mb-3';
+    const noteBadgeClass = isFlagged ? 'bg-danger' : 'bg-secondary';
+    const noteTextClass = isFlagged ? 'text-danger fw-bold' : 'text-muted';
     const cmpHtml = cmp.note_id ? `
-      <div class="card bg-light border-0 p-3 mb-3">
-        <h6 class="fw-bold mb-2"><i class="bi bi-arrow-left-right me-1 text-primary"></i>최우선 액션 vs 노트 Action_Point 비교</h6>
+      <div class="${cmpCardClass}">
+        <h6 class="fw-bold mb-2">
+          <i class="bi bi-arrow-left-right me-1 text-primary"></i>최우선 액션 vs 노트 Action_Point 비교
+          ${isFlagged ? '<span class="badge bg-danger ms-2"><i class="bi bi-flag-fill me-1"></i>RED FLAG</span>' : ''}
+        </h6>
         <table class="table table-sm comparison-table mb-0">
+          ${flaggedWarningRow}
           <tr>
-            <td width="45%"><span class="badge bg-secondary me-1">노트 ${escHtml(cmp.note_id||'')} (${escHtml(cmp.activity_date||'')})</span><br><span class="text-muted">${escHtml(cmp.action_point_from_note||'')}</span></td>
+            <td width="45%"><span class="badge ${noteBadgeClass} me-1">노트 ${escHtml(cmp.note_id||'')} (${escHtml(cmp.activity_date||'')})</span><br><span class="${noteTextClass}">${escHtml(cmp.action_point_from_note||'')}</span></td>
             <td width="10%" class="text-center text-muted">→</td>
             <td width="45%"><span class="badge bg-primary me-1">NBA 최우선</span><br>${escHtml(cmp.nba_top_priority_action||'')}</td>
           </tr>
@@ -883,7 +907,10 @@ function renderSalesNotes(notes) {
 async function loadSalesNotes() {
   try {
     const res = await fetch('/api/sales-notes/' + CUSTOMER_ID);
-    renderSalesNotes(await res.json());
+    _customerSalesNotes = await res.json();
+    renderSalesNotes(_customerSalesNotes);
+    // NBA가 이미 렌더된 상태라면, _red_flag 기반 경고를 반영하도록 재렌더
+    if (_lastNBAData) renderNBA(_lastNBAData);
   } catch(e) {
     document.getElementById('notesContainer').innerHTML =
       '<div class="text-danger small"><i class="bi bi-exclamation-circle me-1"></i>노트 불러오기 실패</div>';
