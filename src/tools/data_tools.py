@@ -348,7 +348,7 @@ def get_pending_actions(customer_id: str) -> list:
 def save_persona(customer_id: str, persona: dict) -> None:
     from db.database import Persona, flag_modified
     persona["customer_id"] = customer_id
-    persona["updated_at"] = datetime.now().strftime("%Y-%m-%d")
+    persona["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M")
     with _session() as session:
         existing = session.query(Persona).filter_by(customer_id=customer_id).first()
         if existing:
@@ -383,7 +383,7 @@ def get_all_personas() -> list:
 def save_nba(customer_id: str, nba_data: dict) -> None:
     from db.database import NBAResult, flag_modified
     nba_data["customer_id"] = customer_id
-    nba_data["generated_at"] = datetime.now().strftime("%Y-%m-%d")
+    nba_data["generated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M")
     with _session() as session:
         existing = session.query(NBAResult).filter_by(customer_id=customer_id).first()
         if existing:
@@ -407,15 +407,29 @@ def get_nba(customer_id: str) -> dict | None:
 # ─── 활동 일정 관리 (DB) ──────────────────────────────────────────────────────
 
 def save_activities(customer_id: str, activities: list) -> None:
+    """Activity 일정 저장. 내부적으로 {activities, updated_at} 엔벨로프로 래핑."""
     from db.database import ActivitySchedule, flag_modified
+    envelope = {
+        "activities": activities,
+        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+    }
     with _session() as session:
         existing = session.query(ActivitySchedule).filter_by(customer_id=customer_id).first()
         if existing:
-            existing.data = activities
+            existing.data = envelope
             flag_modified(existing, "data")
         else:
-            session.add(ActivitySchedule(customer_id=customer_id, data=activities))
+            session.add(ActivitySchedule(customer_id=customer_id, data=envelope))
         session.commit()
+
+
+def _unwrap_activities(data) -> list:
+    """레거시(리스트)와 신 스키마({activities, updated_at}) 모두 수용."""
+    if isinstance(data, dict) and "activities" in data:
+        return data.get("activities") or []
+    if isinstance(data, list):
+        return data
+    return []
 
 
 def get_activities(customer_id: str) -> list:
@@ -423,9 +437,22 @@ def get_activities(customer_id: str) -> list:
         from db.database import ActivitySchedule
         with _session() as session:
             row = session.query(ActivitySchedule).filter_by(customer_id=customer_id).first()
-            return row.data if row else []
+            return _unwrap_activities(row.data) if row else []
     except Exception:
         return []
+
+
+def get_activities_updated_at(customer_id: str) -> str | None:
+    """Activity 일정 마지막 업데이트 타임스탬프 (신 스키마에서만 존재)."""
+    try:
+        from db.database import ActivitySchedule
+        with _session() as session:
+            row = session.query(ActivitySchedule).filter_by(customer_id=customer_id).first()
+            if row and isinstance(row.data, dict):
+                return row.data.get("updated_at")
+            return None
+    except Exception:
+        return None
 
 
 # ─── QC 보고서 관리 (DB) ──────────────────────────────────────────────────────
@@ -470,8 +497,9 @@ def get_recent_notes_with_weights(customer_id: str, analysis_date: str = None, m
 
     if since_date:
         try:
-            cutoff = datetime.strptime(since_date, "%Y-%m-%d")
-        except ValueError:
+            # "YYYY-MM-DD" 또는 "YYYY-MM-DD HH:MM" 모두 허용 — 앞 10자만 파싱
+            cutoff = datetime.strptime(str(since_date)[:10], "%Y-%m-%d")
+        except (ValueError, TypeError):
             cutoff = today - timedelta(days=months * 30)
     else:
         cutoff = today - timedelta(days=months * 30)
@@ -524,8 +552,9 @@ def get_customer_feedback_only(customer_id: str, since_date: str = None) -> dict
     since_dt = None
     if since_date:
         try:
-            since_dt = datetime.strptime(since_date, "%Y-%m-%d")
-        except ValueError:
+            # "YYYY-MM-DD" 또는 "YYYY-MM-DD HH:MM" 모두 허용
+            since_dt = datetime.strptime(str(since_date)[:10], "%Y-%m-%d")
+        except (ValueError, TypeError):
             pass
 
     def _after_since(note):

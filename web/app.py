@@ -256,6 +256,7 @@ def load_customer_results(customer_id: str) -> dict:
         "persona": dt.get_persona(customer_id),
         "nba": dt.get_nba(customer_id),
         "activities": dt.get_activities(customer_id),
+        "activities_updated_at": dt.get_activities_updated_at(customer_id),
         "qc": dt.get_qc_report(customer_id),
     }
 

@@ -446,7 +446,7 @@ function runAgent(type) {
       fetch('/api/customer/' + CUSTOMER_ID).then(r => r.json()).then(data => {
         if (type === 'persona')  renderPersona(data.persona);
         if (type === 'nba')      renderNBA(data.nba);
-        if (type === 'activity') renderActivity(data.activities);
+        if (type === 'activity') renderActivity(data.activities, data.activities_updated_at);
         if (type === 'qc')       renderQC(data.qc);
       }).catch(() => {});
     } else if (d.type === 'error') {
@@ -472,7 +472,7 @@ async function loadAllResults() {
     const data = await fetch('/api/customer/' + CUSTOMER_ID).then(r => r.json());
     renderPersona(data.persona);
     renderNBA(data.nba);
-    renderActivity(data.activities);
+    renderActivity(data.activities, data.activities_updated_at);
     renderQC(data.qc);
   } catch(e) { console.error(e); }
 }
@@ -717,11 +717,14 @@ function renderNBA(nba) {
 }
 
 // ─── Activity 렌더링 ──────────────────────────────────────────────────────────
-function renderActivity(activities) {
+function renderActivity(activities, updatedAt) {
   const el = document.getElementById('content-activity');
   const st = document.getElementById('status-activity');
   if (!activities || activities.length === 0) {
     el.innerHTML = '<div class="text-muted small">Activity 데이터가 없습니다.</div>';
+    if (updatedAt) {
+      st.innerHTML = `<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>업데이트 완료 — ${escHtml(updatedAt)}</span>`;
+    }
     return;
   }
 
@@ -749,7 +752,11 @@ function renderActivity(activities) {
     </tr>`;
   }).join('');
 
-  st.innerHTML = `<span class="text-muted"><i class="bi bi-list-check me-1"></i>총 ${activities.length}개 Activity</span>`;
+  if (updatedAt) {
+    st.innerHTML = `<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>업데이트 완료 — ${escHtml(updatedAt)} · 총 ${activities.length}개 Activity</span>`;
+  } else {
+    st.innerHTML = `<span class="text-muted"><i class="bi bi-list-check me-1"></i>총 ${activities.length}개 Activity</span>`;
+  }
 
   el.innerHTML = `
     <div class="table-responsive">
@@ -938,7 +945,7 @@ window.addEventListener('DOMContentLoaded', function() {
       if (!data) return;
       if (data.persona)    renderPersona(data.persona);
       if (data.nba)        renderNBA(data.nba);
-      if (data.activities) renderActivity(data.activities);
+      if (data.activities) renderActivity(data.activities, data.activities_updated_at);
       if (data.qc)         renderQC(data.qc);
     })
     .catch(() => {});
