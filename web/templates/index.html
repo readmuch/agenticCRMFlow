@@ -141,9 +141,14 @@
   <div class="container pb-5">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
       <p class="text-muted mb-0 small"><i class="bi bi-hand-index me-1"></i>고객 카드를 클릭하면 상세 분석 페이지로 이동합니다</p>
-      <div class="d-flex gap-2 align-items-center">
-        <button class="btn btn-sm btn-primary" id="btnBulkPersona" onclick="startBulkPersonaUpdate()"
-          title="전체 고객의 페르소나를 순차적으로 업데이트합니다 (증분 — 마지막 업데이트 이후 노트만 반영).">
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <div class="form-check form-check-inline me-0"
+          title="체크 시 모든 노트를 다시 분석해 페르소나와 업데이트 시각을 무조건 갱신합니다. 체크하지 않으면 마지막 업데이트 이후에 추가된 노트만 반영되며, 새 노트가 없는 고객은 기존 결과·시각이 그대로 유지됩니다.">
+          <input class="form-check-input" type="checkbox" id="bulkPersonaForce">
+          <label class="form-check-label small" for="bulkPersonaForce">강제 재생성</label>
+          <i class="bi bi-info-circle text-muted small ms-1"></i>
+        </div>
+        <button class="btn btn-sm btn-primary" id="btnBulkPersona" onclick="startBulkPersonaUpdate()">
           <i class="bi bi-person-badge me-1"></i>전체 페르소나 업데이트
         </button>
         <div class="btn-group btn-group-sm">
@@ -896,7 +901,12 @@ function startBulkPersonaUpdate() {
   const text = document.getElementById('bulkProgressText');
   const list = document.getElementById('bulkProgressList');
 
-  if (!confirm('전체 고객의 페르소나를 순차적으로 업데이트합니다. 시간이 다소 걸릴 수 있습니다. 계속하시겠습니까?')) return;
+  const forceEl = document.getElementById('bulkPersonaForce');
+  const force = !!(forceEl && forceEl.checked);
+  const modeMsg = force
+    ? '⚠️ 강제 재생성 모드: 모든 고객의 페르소나를 전체 노트로 다시 분석하고 업데이트 시각을 갱신합니다. 토큰 비용이 많이 들 수 있습니다.'
+    : '증분 모드: 각 고객의 마지막 업데이트 이후에 추가된 노트만 분석합니다. 새 노트가 없는 고객은 기존 결과·시각이 유지됩니다.';
+  if (!confirm(`${modeMsg}\n\n계속하시겠습니까?`)) return;
 
   btn.disabled = true;
   const origHtml = btn.innerHTML;
@@ -909,7 +919,7 @@ function startBulkPersonaUpdate() {
   list.innerHTML = '';
 
   const lineById = {};
-  const es = new EventSource('/api/run/persona-all');
+  const es = new EventSource('/api/run/persona-all' + (force ? '?force=true' : ''));
 
   es.onmessage = (e) => {
     let d;
