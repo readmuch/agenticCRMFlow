@@ -1779,23 +1779,126 @@ function setPersonaView(mode) {
   localStorage.setItem('personasView', mode);
 }
 
-function buildPersonaSectionsHtml(p) {
-  // showPersonaDetail의 섹션 구성 로직을 재사용 가능한 헬퍼로 추출
-  const skip = new Set(['customer_id','_company_name','_tier','updated_at']);
-  const sections = [];
-  for (const [k, v] of Object.entries(p)) {
-    if (skip.has(k) || !v) continue;
-    const label = k.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
-    let content = '';
-    if (Array.isArray(v)) content = `<ul class="mb-0 ps-3">${v.map(item => {
-      if (item && typeof item === 'object') return `<li><pre class="mb-0 small" style="white-space:pre-wrap">${escHtml(JSON.stringify(item,null,2))}</pre></li>`;
-      return `<li>${escHtml(String(item))}</li>`;
-    }).join('')}</ul>`;
-    else if (typeof v === 'object') content = `<pre class="mb-0 small" style="white-space:pre-wrap">${escHtml(JSON.stringify(v,null,2))}</pre>`;
-    else content = escHtml(String(v));
-    sections.push(`<div class="persona-section"><h6>${label}</h6>${content}</div>`);
+function scoreClass(s) {
+  if (s >= 90) return 'excellent'; if (s >= 75) return 'good';
+  if (s >= 60) return 'fair'; return 'poor';
+}
+
+function buildPersonaBodyHtml(p) {
+  // 고객 상세 페이지의 renderPersona와 동일한 레이아웃을 HTML 문자열로 반환.
+  // 신 스키마(preferred_sectors 존재)와 구 스키마(sector_interests 등) 모두 지원.
+  if (!p) return '<div class="text-muted small">페르소나 데이터가 없습니다.</div>';
+
+  if (p.preferred_sectors !== undefined) {
+    const prefSectors = (p.preferred_sectors || []).map(s =>
+      `<li class="mb-1"><i class="bi bi-check-circle text-success me-1"></i><strong>${escHtml(s.sector)}</strong> — ${escHtml(s.reason)}</li>`
+    ).join('');
+    const dislikeSectors = (p.disliked_sectors || []).map(s =>
+      `<li class="mb-1"><i class="bi bi-x-circle text-danger me-1"></i><strong>${escHtml(s.sector)}</strong> — ${escHtml(s.reason)}</li>`
+    ).join('');
+    const prefContent = (p.preferred_content_types || []).map(c =>
+      `<li class="mb-1"><i class="bi bi-check2 text-success me-1"></i>${escHtml(c.type)} — <span class="text-muted">${escHtml(c.reason)}</span></li>`
+    ).join('');
+    const dislikeContent = (p.disliked_content_types || []).map(c =>
+      `<li class="mb-1"><i class="bi bi-dash text-danger me-1"></i>${escHtml(c.type)} — <span class="text-muted">${escHtml(c.reason)}</span></li>`
+    ).join('');
+    const requirements = (p.key_requirements || []).map(r =>
+      `<li class="mb-1"><i class="bi bi-pin-angle text-primary me-1"></i>${escHtml(r)}</li>`
+    ).join('');
+    const dislikes = (p.explicit_dislikes || []).map(d => {
+      const text = (d && typeof d === 'object') ? (d.description || JSON.stringify(d)) : d;
+      return `<li class="mb-1"><i class="bi bi-ban text-danger me-1"></i>${escHtml(text)}</li>`;
+    }).join('');
+    const style = p.preferred_analysis_style || {};
+    const comm  = p.communication_preferences || {};
+
+    return `
+      <div class="row g-4">
+        <div class="col-md-6">
+          <h6 class="fw-bold text-success mb-2"><i class="bi bi-graph-up me-1"></i>선호 섹터</h6>
+          <ul class="list-unstyled small">${prefSectors || '<li class="text-muted">없음</li>'}</ul>
+          <h6 class="fw-bold text-danger mb-2 mt-3"><i class="bi bi-slash-circle me-1"></i>기피 섹터</h6>
+          <ul class="list-unstyled small">${dislikeSectors || '<li class="text-muted">없음</li>'}</ul>
+        </div>
+        <div class="col-md-6">
+          <h6 class="fw-bold text-primary mb-2"><i class="bi bi-file-earmark-text me-1"></i>선호 콘텐츠 유형</h6>
+          <ul class="list-unstyled small">${prefContent || '<li class="text-muted">없음</li>'}</ul>
+          <h6 class="fw-bold text-warning mb-2 mt-3"><i class="bi bi-file-earmark-x me-1"></i>기피 콘텐츠 유형</h6>
+          <ul class="list-unstyled small">${dislikeContent || '<li class="text-muted">없음</li>'}</ul>
+        </div>
+        <div class="col-md-6">
+          <h6 class="fw-bold text-info mb-2"><i class="bi bi-pin me-1"></i>핵심 요구사항</h6>
+          <ul class="list-unstyled small">${requirements || '<li class="text-muted">없음</li>'}</ul>
+        </div>
+        <div class="col-md-6">
+          <h6 class="fw-bold text-danger mb-2"><i class="bi bi-exclamation-triangle me-1"></i>명시적 불만/거부 항목</h6>
+          <ul class="list-unstyled small">${dislikes || '<li class="text-muted">없음</li>'}</ul>
+          ${style.style ? `
+            <h6 class="fw-bold text-secondary mb-2 mt-3"><i class="bi bi-sliders me-1"></i>선호 분석 스타일</h6>
+            <div class="small text-muted">${escHtml(style.style)}${style.detail_level ? ` (${escHtml(style.detail_level)})` : ''}</div>
+            ${style.rationale ? `<div class="small text-muted mt-1">${escHtml(style.rationale)}</div>` : ''}
+          ` : ''}
+          ${comm.channel || comm.frequency || comm.format ? `
+            <h6 class="fw-bold text-secondary mb-2 mt-3"><i class="bi bi-chat-dots me-1"></i>커뮤니케이션 선호</h6>
+            <div class="small text-muted">
+              ${comm.channel    ? `채널: ${escHtml(comm.channel)}<br>` : ''}
+              ${comm.frequency  ? `주기: ${escHtml(comm.frequency)}<br>` : ''}
+              ${comm.format     ? `포맷: ${escHtml(comm.format)}` : ''}
+            </div>
+          ` : ''}
+        </div>
+      </div>`;
   }
-  return sections.map(s => `<div class="col-md-6">${s}</div>`).join('');
+
+  // 구 스키마 fallback
+  const interestColor = { '최고': '#dc3545', '높음': '#fd7e14', '중간': '#ffc107', '낮음': '#6c757d', '없음': '#dee2e6' };
+  const interestMap   = { '최고': 5, '높음': 4, '중간': 3, '낮음': 2, '없음': 1 };
+  const sectors = (p.sector_interests || []).map(s => `
+    <div class="mb-2">
+      <div class="d-flex justify-content-between mb-1">
+        <span class="small fw-semibold">${escHtml(s.sector)}</span>
+        <span class="badge" style="background:${interestColor[s.interest_level]||'#6c757d'}">${escHtml(s.interest_level)}</span>
+      </div>
+      <div class="progress mb-1" style="height:6px">
+        <div class="progress-bar" style="width:${(interestMap[s.interest_level]||1)*20}%;background:${interestColor[s.interest_level]||'#6c757d'}"></div>
+      </div>
+      <div class="text-muted" style="font-size:.75rem">${escHtml(s.rationale || '')}</div>
+    </div>`).join('');
+  const triggers = (p.decision_triggers || []).map(t =>
+    `<li class="mb-1"><i class="bi bi-check2-circle text-success me-1"></i>${escHtml(t)}</li>`).join('');
+  const avoids = (p.avoid_topics || []).map(a =>
+    `<li class="mb-1"><i class="bi bi-x-circle text-danger me-1"></i>${escHtml(a)}</li>`).join('');
+  const comm = p.communication_preferences || {};
+
+  return `
+    <div class="row g-4">
+      <div class="col-md-4">
+        <h6 class="fw-bold text-primary mb-2"><i class="bi bi-speedometer2 me-1"></i>관계 점수</h6>
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div class="score-circle ${scoreClass(p.relationship_score||0)}">
+            <span>${p.relationship_score??'-'}</span>
+            <span style="font-size:.6rem;font-weight:400">/ 100</span>
+          </div>
+        </div>
+        ${comm.preferred_channel || comm.contact_cadence ? `
+          <h6 class="fw-bold text-primary mb-1" style="font-size:.85rem">커뮤니케이션 선호</h6>
+          <div class="small text-muted">
+            ${comm.preferred_channel ? '채널: ' + escHtml(comm.preferred_channel) : ''}
+            ${comm.contact_cadence   ? '<br>주기: ' + escHtml(comm.contact_cadence) : ''}
+          </div>
+        ` : ''}
+      </div>
+      <div class="col-md-4">
+        <h6 class="fw-bold text-primary mb-2"><i class="bi bi-graph-up me-1"></i>섹터 관심도</h6>
+        ${sectors || '<div class="text-muted small">없음</div>'}
+      </div>
+      <div class="col-md-4">
+        <h6 class="fw-bold text-success mb-2"><i class="bi bi-lightning me-1"></i>결정 트리거</h6>
+        <ul class="list-unstyled small">${triggers || '<li class="text-muted">없음</li>'}</ul>
+        <h6 class="fw-bold text-danger mb-2 mt-3"><i class="bi bi-slash-circle me-1"></i>절대 금지</h6>
+        <ul class="list-unstyled small">${avoids || '<li class="text-muted">없음</li>'}</ul>
+      </div>
+    </div>`;
 }
 
 function renderPersonasDetailView() {
@@ -1818,9 +1921,7 @@ function renderPersonasDetailView() {
             <span class="text-muted small">${escHtml(p.customer_id || '')}</span>
             <span class="ms-auto small text-muted"><i class="bi bi-clock-history me-1"></i>업데이트: ${escHtml(updated)}</span>
           </div>
-          <div class="row g-2">
-            ${buildPersonaSectionsHtml(p)}
-          </div>
+          ${buildPersonaBodyHtml(p)}
         </div>
       </div>`;
   }).join('');
@@ -1831,24 +1932,12 @@ function showPersonaDetail(i) {
   document.getElementById('personaModalTitle').textContent = p._company_name || p.customer_id;
   document.getElementById('personaCustomerLink').href = `/customer/${p.customer_id}`;
 
-  const skip = new Set(['customer_id','_company_name','_tier','updated_at']);
-  const sections = [];
-  for (const [k, v] of Object.entries(p)) {
-    if (skip.has(k) || !v) continue;
-    const label = k.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
-    let content = '';
-    if (Array.isArray(v)) content = `<ul class="mb-0 ps-3">${v.map(item => `<li>${escHtml(String(item))}</li>`).join('')}</ul>`;
-    else if (typeof v === 'object') content = `<pre class="mb-0 small" style="white-space:pre-wrap">${escHtml(JSON.stringify(v,null,2))}</pre>`;
-    else content = escHtml(String(v));
-    sections.push(`<div class="persona-section"><h6>${label}</h6>${content}</div>`);
-  }
-
   document.getElementById('personaModalBody').innerHTML = `
     <div class="d-flex gap-2 mb-3 flex-wrap">
       ${p._tier ? `<span class="badge fs-6 tier-badge tier-${p._tier}">${p._tier}등급</span>` : ''}
-      ${p.updated_at ? `<span class="badge bg-secondary">업데이트: ${p.updated_at}</span>` : ''}
+      ${p.updated_at ? `<span class="badge bg-secondary"><i class="bi bi-clock-history me-1"></i>업데이트: ${escHtml(p.updated_at)}</span>` : ''}
     </div>
-    <div class="row g-2">${sections.map(s => `<div class="col-md-6">${s}</div>`).join('')}</div>
+    ${buildPersonaBodyHtml(p)}
   `;
   new bootstrap.Modal(document.getElementById('personaDetailModal')).show();
 }
