@@ -67,6 +67,32 @@
     .note-red-flag-row { background: #ffcfcf !important; border-left: 4px solid #dc3545; }
     .note-red-flag-row:hover { background: #ffb3b3 !important; }
     .note-red-flag-row td { border-top-color: #f1a7a7; }
+
+    /* 우하단 챗 패널 */
+    #chatToggleBtn {
+      position: fixed; bottom: 24px; right: 24px;
+      width: 56px; height: 56px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; z-index: 1050;
+      box-shadow: 0 6px 20px rgba(13,110,253,.35);
+    }
+    #chatPanel {
+      position: fixed; bottom: 96px; right: 24px;
+      width: 400px; max-width: calc(100vw - 32px);
+      height: 70vh; max-height: 620px;
+      background: #fff; border: 1px solid #dee2e6; border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.15);
+      z-index: 1049; overflow: hidden;
+    }
+    #chatMessages { background: #f8f9fa; }
+    .chat-bubble {
+      max-width: 85%; padding: .5rem .75rem; border-radius: 10px;
+      white-space: pre-wrap; word-break: break-word; font-size: .88rem;
+    }
+    .chat-bubble-user { background: #0d6efd; color: #fff; }
+    .chat-bubble-asst { background: #fff; border: 1px solid #e9ecef; }
+    .chat-bubble-err  { background: #fff5f5; border: 1px solid #f5c2c7; color: #842029; }
+    #chatInput { resize: none; max-height: 120px; }
   </style>
 </head>
 <body>
@@ -864,6 +890,36 @@
       <div class="modal-footer">
         <a id="personaCustomerLink" href="#" class="btn btn-primary btn-sm"><i class="bi bi-arrow-right-circle me-1"></i>고객 상세 페이지</a>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ AI 챗 패널 ═══════════════════ -->
+<button id="chatToggleBtn" class="btn btn-primary" onclick="toggleChat()" title="AI 어시스턴트 열기/닫기">
+  <i class="bi bi-chat-dots-fill" id="chatToggleIcon"></i>
+</button>
+<div id="chatPanel" style="display:none">
+  <div class="d-flex flex-column h-100">
+    <div class="d-flex align-items-center gap-2 p-3 bg-dark text-white">
+      <i class="bi bi-robot fs-5"></i>
+      <strong>AI 어시스턴트</strong>
+      <span class="badge bg-secondary small ms-1" id="chatModelBadge"></span>
+      <button class="btn btn-sm btn-outline-light py-0 ms-auto" onclick="clearChat()" title="대화 초기화">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+      <button class="btn btn-sm btn-outline-light py-0" onclick="toggleChat()" title="닫기">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div id="chatMessages" class="flex-grow-1 p-3" style="overflow-y:auto"></div>
+    <div class="p-2 border-top bg-white">
+      <div class="d-flex gap-2">
+        <textarea id="chatInput" class="form-control form-control-sm" rows="1" placeholder="질문을 입력하고 Enter…"></textarea>
+        <button id="chatSendBtn" class="btn btn-primary btn-sm" onclick="sendChatMessage()" title="전송 (Enter)">
+          <i class="bi bi-send-fill"></i>
+        </button>
+      </div>
+      <div class="small text-muted mt-1 ps-1">Enter 전송 · Shift+Enter 줄바꿈 · 모델은 상단 셀렉터에서 선택</div>
     </div>
   </div>
 </div>
@@ -2195,6 +2251,113 @@ function escHtml(s) {
 document.getElementById('filterSearch').addEventListener('keydown', e => { if(e.key==='Enter') applyNotesFilter(); });
 document.getElementById('personaSearch').addEventListener('keydown', e => { if(e.key==='Enter') applyPersonaFilter(); });
 document.getElementById('custSearch').addEventListener('keydown', e => { if(e.key==='Enter') applyCustomersAllFilter(); });
+
+// ═══════════════════ AI 챗 패널 ═══════════════════════════════════════════════
+const _chatMessages = []; // {role, content}
+let _chatOpen = localStorage.getItem('chatOpen') === '1';
+
+function toggleChat() {
+  _chatOpen = !_chatOpen;
+  const panel = document.getElementById('chatPanel');
+  const icon = document.getElementById('chatToggleIcon');
+  panel.style.display = _chatOpen ? '' : 'none';
+  icon.className = _chatOpen ? 'bi bi-x-lg' : 'bi bi-chat-dots-fill';
+  localStorage.setItem('chatOpen', _chatOpen ? '1' : '0');
+  if (_chatOpen) setTimeout(() => document.getElementById('chatInput').focus(), 50);
+}
+
+function appendChatBubble(role, content) {
+  const container = document.getElementById('chatMessages');
+  const wrap = document.createElement('div');
+  wrap.className = 'mb-2 d-flex' + (role === 'user' ? ' justify-content-end' : '');
+  const bub = document.createElement('div');
+  bub.className = 'chat-bubble ' + (role === 'user' ? 'chat-bubble-user' : role === 'error' ? 'chat-bubble-err' : 'chat-bubble-asst');
+  bub.textContent = content;
+  wrap.appendChild(bub);
+  container.appendChild(wrap);
+  container.scrollTop = container.scrollHeight;
+  return bub;
+}
+
+function renderChatIntro() {
+  const container = document.getElementById('chatMessages');
+  container.innerHTML = '<div class="text-muted small text-center py-3"><i class="bi bi-info-circle me-1"></i>무엇이든 물어보세요. 상단 모델 셀렉터에서 선택한 모델이 응답합니다.</div>';
+}
+
+function clearChat() {
+  if (_chatMessages.length && !confirm('대화 내용을 초기화하시겠습니까?')) return;
+  _chatMessages.length = 0;
+  renderChatIntro();
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('chatSendBtn');
+  const text = (input.value || '').trim();
+  if (!text) return;
+  input.value = '';
+  input.style.height = '';
+
+  if (!_chatMessages.length) {
+    // Remove intro placeholder on first user message
+    document.getElementById('chatMessages').innerHTML = '';
+  }
+  _chatMessages.push({ role: 'user', content: text });
+  appendChatBubble('user', text);
+
+  const spinnerBub = appendChatBubble('assistant', '');
+  spinnerBub.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>생각 중...';
+  sendBtn.disabled = true;
+  input.disabled = true;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: _chatMessages }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    spinnerBub.textContent = data.reply || '(빈 응답)';
+    _chatMessages.push({ role: 'assistant', content: data.reply || '' });
+    const badge = document.getElementById('chatModelBadge');
+    if (badge && data.label) badge.textContent = data.label;
+  } catch (e) {
+    spinnerBub.className = 'chat-bubble chat-bubble-err';
+    spinnerBub.innerHTML = '';
+    spinnerBub.appendChild(document.createTextNode('⚠️ ' + (e.message || '오류')));
+    // 사용자가 재전송할 수 있도록 마지막 user 메시지는 히스토리에 유지
+  } finally {
+    sendBtn.disabled = false;
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+// Enter = 전송, Shift+Enter = 줄바꿈. 높이 자동 조정.
+(function initChat() {
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      sendChatMessage();
+    }
+  });
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+  // 초기 인트로 표시 + 열림 상태 복원
+  renderChatIntro();
+  if (_chatOpen) {
+    document.getElementById('chatPanel').style.display = '';
+    document.getElementById('chatToggleIcon').className = 'bi bi-x-lg';
+  }
+})();
 </script>
 </body>
 </html>
