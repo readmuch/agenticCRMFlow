@@ -63,15 +63,21 @@ class BaseAgent:
             for tool in self.tools
         ]
 
-    def run(self, prompt: str) -> str:
+    def run(self, prompt_or_messages, max_tool_iterations: int | None = None) -> str:
+        """단발 프롬프트(str) 또는 멀티턴 메시지 리스트([{role, content}]) 모두 수용.
+        max_tool_iterations: 도구 호출 반복 상한 (None=무제한). 무한 루프 방지용."""
+        if isinstance(prompt_or_messages, str):
+            init_messages = [{"role": "user", "content": prompt_or_messages}]
+        else:
+            init_messages = list(prompt_or_messages)
         if self.provider == "anthropic":
-            return self._run_anthropic(prompt)
-        return self._run_openrouter(prompt)
+            return self._run_anthropic(init_messages, max_tool_iterations)
+        return self._run_openrouter(init_messages, max_tool_iterations)
 
     # ── Anthropic SDK 루프 ──────────────────────────────────────────────────
 
-    def _run_anthropic(self, prompt: str) -> str:
-        messages = [{"role": "user", "content": prompt}]
+    def _run_anthropic(self, init_messages: list, max_tool_iterations: int | None = None) -> str:
+        messages = list(init_messages)
         self._log("시작")
 
         kwargs = dict(
@@ -86,6 +92,7 @@ class BaseAgent:
         collected_text = []
         max_continuations = 5
         continuation_count = 0
+        tool_iteration_count = 0
 
         while True:
             response = self.client.messages.create(**kwargs)
@@ -114,6 +121,10 @@ class BaseAgent:
                 continue
 
             if response.stop_reason == "tool_use" and tool_blocks:
+                tool_iteration_count += 1
+                if max_tool_iterations is not None and tool_iteration_count > max_tool_iterations:
+                    self._log(f"도구 반복 상한({max_tool_iterations}회) 초과 — 루프 종료")
+                    break
                 tool_results = []
                 for block in tool_blocks:
                     self._log(f"도구 호출: {block.name}({list(block.input.keys())})")
@@ -166,18 +177,19 @@ class BaseAgent:
                         "잠시 후 다시 시도하거나 다른 모델을 선택하세요."
                     ) from e
 
-    def _run_openrouter(self, prompt: str) -> str:
+    def _run_openrouter(self, init_messages: list, max_tool_iterations: int | None = None) -> str:
         # 시스템 메시지를 첫 번째 메시지로 포함
         messages = []
         if self.system_prompt:
             messages.append({"role": "system", "content": self.system_prompt})
-        messages.append({"role": "user", "content": prompt})
+        messages.extend(init_messages)
         self._log(f"시작 (OpenRouter · {self.model})")
 
         openai_tools = self._to_openai_tools() if self.tools else None
         collected_text = []
         max_continuations = 5
         continuation_count = 0
+        tool_iteration_count = 0
 
         while True:
             kwargs = dict(model=self.model, messages=messages)
@@ -223,6 +235,10 @@ class BaseAgent:
                 continue
 
             if finish_reason == "tool_calls" and msg.tool_calls:
+                tool_iteration_count += 1
+                if max_tool_iterations is not None and tool_iteration_count > max_tool_iterations:
+                    self._log(f"도구 반복 상한({max_tool_iterations}회) 초과 — 루프 종료")
+                    break
                 # assistant 메시지 추가 (tool_calls 포함)
                 messages.append({
                     "role": "assistant",

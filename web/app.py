@@ -37,6 +37,7 @@ from agents.nba_agent import NBAAgent
 from agents.activity_agent import ActivityAgent
 from agents.qc_agent import QCAgent
 from agents.dislike_checker_agent import DislikeCheckerAgent
+from agents.chat_agent import ChatAgent
 
 
 @asynccontextmanager
@@ -519,13 +520,6 @@ async def api_set_model(body: ModelSelect):
     return {"selected": body.model, "label": meta["label"], "provider": meta["provider"]}
 
 
-CHAT_SYSTEM_PROMPT = (
-    "당신은 증권사 기관영업 CRM에 통합된 AI 어시스턴트입니다. "
-    "사용자의 질문에 한국어로 간결하고 정확하게 답변하세요. "
-    "모르면 모른다고 명확히 말하고, 추측을 사실처럼 단언하지 마세요."
-)
-
-
 class ChatMessage(BaseModel):
     role: str  # "user" | "assistant"
     content: str
@@ -537,12 +531,13 @@ class ChatRequest(BaseModel):
 
 @app.post("/api/chat")
 async def api_chat(body: ChatRequest):
-    """대시보드 우측 챗 패널용 단발 요청/응답 엔드포인트.
-    현재 _model_setting 모델로 Anthropic 또는 OpenRouter 호출.
-    대화 이력은 클라이언트가 유지하고 매 요청마다 전체 전송."""
+    """대시보드 우측 챗 패널의 CRM 어시스턴트 엔드포인트.
+    ChatAgent가 읽기 전용 도구(고객/페르소나/NBA/활동/QC/세일즈 노트 조회)로
+    질문에 맞는 데이터를 조회한 뒤 답변을 생성한다. 대화 이력은 클라이언트가
+    유지하고 매 요청마다 전체를 전송 — 서버는 무상태."""
     from fastapi import HTTPException
 
-    msgs = [m for m in body.messages if (m.content or "").strip()]
+    msgs = [{"role": m.role, "content": m.content} for m in body.messages if (m.content or "").strip()]
     if not msgs:
         raise HTTPException(status_code=400, detail="메시지가 비어 있습니다.")
 
@@ -551,37 +546,10 @@ async def api_chat(body: ChatRequest):
     provider = meta["provider"]
 
     try:
-        if provider == "anthropic":
-            from anthropic import Anthropic
-            client = Anthropic()
-            resp = client.messages.create(
-                model=selected,
-                max_tokens=2000,
-                system=CHAT_SYSTEM_PROMPT,
-                messages=[{"role": m.role, "content": m.content} for m in msgs],
-            )
-            text_blocks = [b.text for b in resp.content if getattr(b, "type", "") == "text"]
-            reply = "\n".join(t for t in text_blocks if t).strip()
-            if not reply:
-                reply = "(빈 응답)"
-        else:
-            from tools.openrouter_client import get_client
-            client = get_client()
-            payload = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
-            payload.extend({"role": m.role, "content": m.content} for m in msgs)
-            resp = client.chat.completions.create(
-                model=selected,
-                messages=payload,
-                max_tokens=2000,
-            )
-            if resp is None or not getattr(resp, "choices", None):
-                err = getattr(resp, "error", None)
-                if err is None and resp is not None and hasattr(resp, "model_dump"):
-                    err = resp.model_dump(exclude_none=True).get("error")
-                raise RuntimeError(
-                    f"OpenRouter 응답에 choices가 없습니다 (모델: {selected}). 잠시 후 재시도하거나 다른 모델을 선택하세요. details={err}"
-                )
-            reply = (resp.choices[0].message.content or "").strip() or "(빈 응답)"
+        agent = ChatAgent(model=selected, provider=provider)
+        reply = agent.chat(msgs)
+        if not reply or not reply.strip():
+            reply = "(빈 응답)"
         return {"reply": reply, "model": selected, "label": meta["label"], "provider": provider}
     except HTTPException:
         raise
