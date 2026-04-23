@@ -1926,11 +1926,10 @@ function renderPersonasTable() {
       <th>등급</th>
       <th onclick="sortPersonas('_company_name')" style="cursor:pointer">고객사 <i class="bi bi-arrow-down-up"></i></th>
       ${dynamicHeaders}
-      <th onclick="sortPersonas('updated_at')" style="cursor:pointer">업데이트 <i class="bi bi-arrow-down-up"></i></th>
       <th style="width:60px"></th>`;
   }
 
-  const totalCols = 3 + selectedPersonaKeys.length + 1; // 등급 + 고객사 + 동적 + 업데이트 + 액션
+  const totalCols = 3 + selectedPersonaKeys.length; // 등급 + 고객사 + 동적 + 액션
   const tbody = document.getElementById('personasTableBody');
   if (!filteredPersonas.length) {
     tbody.innerHTML = `<tr><td colspan="${totalCols}" class="text-center py-4 text-muted">데이터가 없습니다.</td></tr>`;
@@ -1939,7 +1938,6 @@ function renderPersonasTable() {
   }
   tbody.innerHTML = filteredPersonas.map((p, i) => {
     const tier = p._tier || '';
-    const updated = p.updated_at || '—';
     const dynamicCells = selectedPersonaKeys.map(k => {
       const short = formatPersonaCellText(k, p[k]);
       const full  = formatPersonaCellFull(k, p[k]);
@@ -1950,7 +1948,6 @@ function renderPersonasTable() {
         <td>${tier ? `<span class="tier-badge tier-${tier}">${tier}</span>` : '—'}</td>
         <td class="fw-semibold"><a href="/customer/${p.customer_id}" class="text-decoration-none" onclick="event.stopPropagation()">${escHtml(p._company_name || p.customer_id)}</a></td>
         ${dynamicCells}
-        <td class="small text-muted text-nowrap">${escHtml(updated)}</td>
         <td><button class="btn btn-sm btn-outline-secondary py-0" onclick="event.stopPropagation();showPersonaDetail(${i})"><i class="bi bi-eye"></i></button></td>
       </tr>`;
   }).join('');
