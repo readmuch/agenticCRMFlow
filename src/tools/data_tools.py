@@ -504,6 +504,24 @@ def get_activities(customer_id: str) -> list:
         return []
 
 
+def get_all_activities() -> list:
+    """전체 고객 Activity 엔벨로프 목록. 각 항목: {customer_id, activities:[...], updated_at}"""
+    try:
+        from db.database import ActivitySchedule
+        out: list[dict] = []
+        with _session() as session:
+            for row in session.query(ActivitySchedule).all():
+                data = row.data if isinstance(row.data, dict) else {}
+                out.append({
+                    "customer_id": row.customer_id,
+                    "activities": _unwrap_activities(row.data),
+                    "updated_at": data.get("updated_at"),
+                })
+        return out
+    except Exception:
+        return []
+
+
 def get_activities_updated_at(customer_id: str) -> str | None:
     """Activity 일정 마지막 업데이트 타임스탬프 (신 스키마에서만 존재)."""
     try:

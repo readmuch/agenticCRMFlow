@@ -131,6 +131,9 @@
       <li class="nav-item">
         <button class="nav-link" data-tab="nba"><i class="bi bi-lightbulb me-1"></i>전체 NBA 추천</button>
       </li>
+      <li class="nav-item">
+        <button class="nav-link" data-tab="activities"><i class="bi bi-calendar3 me-1"></i>전체 Activity</button>
+      </li>
     </ul>
   </div>
 </div>
@@ -189,6 +192,10 @@
         <button class="btn btn-sm btn-warning" id="btnBulkNba" onclick="startBulkNbaUpdate()">
           <i class="bi bi-lightbulb me-1"></i>전체 NBA 추천
         </button>
+        <button class="btn btn-sm btn-success" id="btnBulkActivity" onclick="startBulkActivityUpdate()"
+          title="NBA가 생성된 고객의 Activity 일정을 일괄 업데이트합니다. NBA가 없는 고객은 자동 스킵.">
+          <i class="bi bi-calendar3 me-1"></i>전체 Activity 업데이트
+        </button>
         <div class="btn-group btn-group-sm">
           <button class="btn btn-outline-secondary view-btn active" id="btnCard" onclick="setView('card')">
             <i class="bi bi-grid-3x3-gap me-1"></i>카드
@@ -227,6 +234,21 @@
           <div id="bulkNbaProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width:0%"></div>
         </div>
         <div id="bulkNbaProgressList" class="small" style="max-height:260px;overflow-y:auto;border:1px solid #e9ecef;border-radius:6px"></div>
+      </div>
+    </div>
+
+    <!-- 전체 Activity 업데이트 진행 패널 -->
+    <div id="bulkActivityPanel" class="card shadow-sm mb-3" style="display:none">
+      <div class="card-body p-3">
+        <div class="d-flex align-items-center mb-2">
+          <strong class="small"><i class="bi bi-calendar3 me-1 text-success"></i>전체 Activity 업데이트 진행 상황</strong>
+          <span class="ms-2 badge bg-secondary" id="bulkActivityProgressText">0 / 0</span>
+          <button class="btn btn-sm btn-link ms-auto py-0" onclick="toggleBulkActivityPanel()"><i class="bi bi-chevron-up"></i>접기</button>
+        </div>
+        <div class="progress mb-2" style="height:8px">
+          <div id="bulkActivityProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width:0%"></div>
+        </div>
+        <div id="bulkActivityProgressList" class="small" style="max-height:260px;overflow-y:auto;border:1px solid #e9ecef;border-radius:6px"></div>
       </div>
     </div>
 
@@ -665,6 +687,169 @@
   </div>
 </div>
 
+<style>
+  /* Activity 뱃지 (customer.html 스타일 이식) */
+  .approval-badge { font-size: .72rem; padding: .2em .55em; border-radius: 10px; font-weight: 600; display:inline-block; }
+  .appr-ai      { background: #fff3cd; color: #856404; }
+  .appr-crm     { background: #cfe2ff; color: #084298; }
+  .appr-sales   { background: #d1e7dd; color: #0a3622; }
+  .act-pending   { background: #e2e3e5; color: #495057; }
+  .act-progress  { background: #cfe2ff; color: #084298; }
+  .act-done      { background: #d1e7dd; color: #0a3622; }
+  .act-cancelled { background: #f8d7da; color: #721c24; }
+  /* 달력 */
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: #dee2e6; border:1px solid #dee2e6; border-radius:6px; overflow:hidden; }
+  .cal-head { background: #f8f9fa; padding: 6px 8px; font-weight: 600; font-size: .78rem; text-align: center; color:#495057; }
+  .cal-cell { background: #fff; min-height: 110px; padding: 4px 4px 6px; font-size: .72rem; position: relative; display:flex; flex-direction:column; }
+  .cal-cell.cal-muted { background: #f8f9fa; color: #adb5bd; }
+  .cal-cell.cal-today { outline: 2px solid #0d6efd; outline-offset:-2px; }
+  .cal-date { font-weight: 600; font-size: .8rem; margin-bottom: 3px; }
+  .cal-items { display:flex; flex-direction: column; gap: 2px; flex: 1; }
+  .cal-item { cursor: pointer; padding: 2px 4px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid #adb5bd; background: #f8f9fa; }
+  .cal-item:hover { background: #e7f1ff; }
+  .cal-item.type-meeting  { border-left-color:#d63384; }
+  .cal-item.type-call     { border-left-color:#fd7e14; }
+  .cal-item.type-email    { border-left-color:#0d6efd; }
+  .cal-item.type-report   { border-left-color:#198754; }
+  .cal-item.type-internal { border-left-color:#6c757d; }
+  .cal-more { cursor: pointer; font-size: .7rem; color: #0d6efd; font-weight: 600; padding: 2px 4px; }
+  .cal-more:hover { text-decoration: underline; }
+</style>
+
+<!-- ═══════════════════ TAB: 전체 Activity ═══════════════════ -->
+<div id="tab-activities" class="tab-pane" style="display:none">
+  <div class="container-fluid py-4 pb-5 px-md-4">
+    <div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+      <h4 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2 text-success"></i>전체 Activity</h4>
+      <span class="badge bg-secondary" id="activitiesAllCount">로딩 중...</span>
+      <div class="ms-auto d-flex gap-2 align-items-center">
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-secondary view-btn active" id="btnActivityListView" onclick="setActivityView('list')">
+            <i class="bi bi-list-ul me-1"></i>리스트
+          </button>
+          <button class="btn btn-outline-secondary view-btn" id="btnActivityCalendarView" onclick="setActivityView('calendar')">
+            <i class="bi bi-calendar-month me-1"></i>달력
+          </button>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary" onclick="loadAllActivities(true)">
+          <i class="bi bi-arrow-clockwise me-1"></i>새로고침
+        </button>
+      </div>
+    </div>
+
+    <!-- 필터 바 -->
+    <div class="p-2 mb-3 bg-light rounded border">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small mb-1">고객사</label>
+          <select id="actFilterCustomer" class="form-select form-select-sm" onchange="renderAllActivities()">
+            <option value="">전체</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">기한 From</label>
+          <input type="date" id="actFilterFrom" class="form-control form-control-sm" onchange="renderAllActivities()">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">기한 To</label>
+          <input type="date" id="actFilterTo" class="form-control form-control-sm" onchange="renderAllActivities()">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">진행 상태</label>
+          <select id="actFilterStatus" class="form-select form-select-sm" onchange="renderAllActivities()">
+            <option value="">전체</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">NBA 승인</label>
+          <select id="actFilterApproval" class="form-select form-select-sm" onchange="renderAllActivities()">
+            <option value="">전체</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-sm btn-outline-secondary" onclick="resetActivityFilter()"><i class="bi bi-x-lg"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 리스트 뷰 -->
+    <div id="activitiesListView">
+      <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+          <table class="table table-hover table-sm align-middle mb-0" style="font-size:.85rem">
+            <thead class="table-dark">
+              <tr>
+                <th style="width:110px">기한 ▲</th>
+                <th>고객사</th>
+                <th style="width:110px">ID</th>
+                <th>제목</th>
+                <th style="width:80px">유형</th>
+                <th style="width:90px">진행상태</th>
+                <th style="width:90px">NBA 승인</th>
+                <th>연계 NBA</th>
+              </tr>
+            </thead>
+            <tbody id="activitiesListBody">
+              <tr><td class="text-center py-4 text-muted" colspan="8">로딩 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="mt-2">
+        <span class="approval-badge appr-ai me-2">AI 제안</span>
+        <span class="approval-badge appr-crm me-2">CRM 승인</span>
+        <span class="approval-badge appr-sales me-2">Sales 승인</span>
+        <span class="approval-badge act-pending me-2">대기</span>
+        <span class="approval-badge act-progress me-2">진행중</span>
+        <span class="approval-badge act-done me-2">완료</span>
+        <span class="approval-badge act-cancelled">취소</span>
+      </div>
+    </div>
+
+    <!-- 달력 뷰 -->
+    <div id="activitiesCalendarView" style="display:none">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex align-items-center">
+          <button class="btn btn-sm btn-outline-secondary" onclick="calendarNav(-1)"><i class="bi bi-chevron-left"></i></button>
+          <strong class="mx-3" id="calendarTitle">—</strong>
+          <button class="btn btn-sm btn-outline-secondary" onclick="calendarNav(1)"><i class="bi bi-chevron-right"></i></button>
+          <button class="btn btn-sm btn-link ms-2" onclick="calendarGoToday()">오늘</button>
+          <div class="ms-auto small text-muted" id="calendarSummary"></div>
+        </div>
+        <div class="card-body p-2">
+          <div id="calendarGrid" class="cal-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Activity 상세 모달 -->
+<div class="modal fade" id="activityDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-calendar-event me-2 text-success"></i>Activity 상세</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="activityDetailBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 날짜별 전체 Activity 모달 (달력 +N 더보기) -->
+<div class="modal fade" id="dayActivityListModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="dayActivityListTitle">—</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="dayActivityListBody"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════ TAB: 전체 NBA 추천 ═══════════════════ -->
 <div id="tab-nba" class="tab-pane" style="display:none">
   <div class="container py-4 pb-5">
@@ -998,7 +1183,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // ─── 탭 전환 ─────────────────────────────────────────────────────────────────
-const tabLoaded = { customers: true, customersAll: false, notes: false, upload: false, personas: false, nba: false };
+const tabLoaded = { customers: true, customersAll: false, notes: false, upload: false, personas: false, nba: false, activities: false };
 
 document.querySelectorAll('#mainTabs .nav-link').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1012,6 +1197,7 @@ document.querySelectorAll('#mainTabs .nav-link').forEach(btn => {
     if (tab === 'notes' && !tabLoaded.notes) { loadAllNotes(); tabLoaded.notes = true; }
     if (tab === 'personas' && !tabLoaded.personas) { loadAllPersonas(); tabLoaded.personas = true; }
     if (tab === 'nba' && !tabLoaded.nba) { loadAllNba(); tabLoaded.nba = true; }
+    if (tab === 'activities' && !tabLoaded.activities) { loadAllActivities(); tabLoaded.activities = true; }
   });
 });
 
@@ -1193,6 +1379,370 @@ function startBulkNbaUpdate() {
 function toggleBulkNbaPanel() {
   const p = document.getElementById('bulkNbaPanel');
   p.style.display = (p.style.display === 'none' || !p.style.display) ? '' : 'none';
+}
+
+// ─── 전체 Activity 일괄 업데이트 ─────────────────────────────────────────────
+function startBulkActivityUpdate() {
+  const btn = document.getElementById('btnBulkActivity');
+  const panel = document.getElementById('bulkActivityPanel');
+  const bar = document.getElementById('bulkActivityProgressBar');
+  const text = document.getElementById('bulkActivityProgressText');
+  const list = document.getElementById('bulkActivityProgressList');
+
+  if (!confirm('전체 고객의 Activity 일정을 재생성합니다. 최신 NBA 결과를 기준으로 하며, NBA가 없는 고객은 자동 스킵됩니다.\n\n계속하시겠습니까?')) return;
+
+  btn.disabled = true;
+  const origHtml = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>실행 중...';
+  panel.style.display = '';
+  bar.style.width = '0%';
+  bar.classList.remove('bg-danger', 'bg-warning');
+  bar.classList.add('bg-success', 'progress-bar-animated');
+  text.textContent = '0 / 0';
+  list.innerHTML = '';
+
+  const lineById = {};
+  const es = new EventSource('/api/run/activity-all');
+
+  es.onmessage = (e) => {
+    let d;
+    try { d = JSON.parse(e.data); } catch { return; }
+    if (d.type === 'progress') {
+      const pct = d.total ? (d.index / d.total) * 100 : 0;
+      bar.style.width = `${pct}%`;
+      text.textContent = `${d.index} / ${d.total}`;
+      const key = d.customer_id;
+      if (!lineById[key]) {
+        const row = document.createElement('div');
+        row.className = 'd-flex align-items-center py-1 px-2 border-bottom';
+        row.innerHTML = `
+          <span class="badge bg-secondary me-2">${d.index}/${d.total}</span>
+          <span class="fw-semibold me-2">${escHtml(d.company_name || d.customer_id)}</span>
+          <span class="text-muted small me-2">${escHtml(d.customer_id)}</span>
+          <span class="ms-auto small" data-role="status">⏳ 분석 중...</span>`;
+        list.appendChild(row);
+        lineById[key] = row;
+        list.scrollTop = list.scrollHeight;
+      }
+      const statusEl = lineById[key].querySelector('[data-role=status]');
+      if (d.status === 'started') statusEl.innerHTML = '<span class="text-muted">⏳ 분석 중...</span>';
+      else if (d.status === 'done') statusEl.innerHTML = '<span class="text-success">✅ 완료</span>';
+      else if (d.status === 'skipped') statusEl.innerHTML = `<span class="text-muted">⏭️ 스킵 — ${escHtml(d.error || 'NBA 미생성')}</span>`;
+      else if (d.status === 'error') statusEl.innerHTML = `<span class="text-danger">❌ ${escHtml(d.error || '오류')}</span>`;
+    } else if (d.type === 'done') {
+      bar.classList.remove('bg-success', 'progress-bar-animated');
+      bar.classList.add((d.failed || 0) ? 'bg-danger' : 'bg-success');
+      const parts = [`${d.total} / ${d.total}`, `<span class="text-success">성공 ${d.succeeded}</span>`];
+      if (d.failed) parts.push(`<span class="text-danger">실패 ${d.failed}</span>`);
+      if (d.skipped) parts.push(`<span class="text-muted">스킵 ${d.skipped}</span>`);
+      parts.push(`<span class="text-muted small">${escHtml(d.completed_at || '')}</span>`);
+      text.innerHTML = parts.join(' · ');
+      es.close();
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+      tabLoaded.activities = false;
+    } else if (d.type === 'error') {
+      alert(`오류: ${d.text || '알 수 없는 오류'}`);
+      es.close();
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  };
+
+  es.onerror = () => {
+    es.close();
+    btn.disabled = false;
+    btn.innerHTML = origHtml;
+    bar.classList.remove('progress-bar-animated');
+  };
+}
+
+function toggleBulkActivityPanel() {
+  const p = document.getElementById('bulkActivityPanel');
+  p.style.display = (p.style.display === 'none' || !p.style.display) ? '' : 'none';
+}
+
+// ─── 전체 Activity 조회 탭 ───────────────────────────────────────────────────
+let _allActivitiesCache = [];
+let _activityView = 'list';
+let _calendarAnchor = null;  // Date — 달력이 보여주는 달의 1일
+
+const ACT_APPR_LABEL = { ai_proposed: ['appr-ai','AI 제안'], crm_approved: ['appr-crm','CRM 승인'], sales_approved: ['appr-sales','Sales 승인'] };
+const ACT_STAT_LABEL = { pending: ['act-pending','대기'], in_progress: ['act-progress','진행중'], completed: ['act-done','완료'], cancelled: ['act-cancelled','취소'] };
+
+async function loadAllActivities(forceRefresh) {
+  const body = document.getElementById('activitiesListBody');
+  const countEl = document.getElementById('activitiesAllCount');
+  body.innerHTML = '<tr><td class="text-center py-4 text-muted" colspan="8"><span class="spinner-border spinner-border-sm me-2"></span>로딩 중...</td></tr>';
+  countEl.textContent = '로딩 중...';
+  try {
+    const res = await fetch('/api/all-activities' + (forceRefresh ? ('?_=' + Date.now()) : ''));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    _allActivitiesCache = await res.json();
+    populateActivityFilterOptions();
+    // 달력 기준달 초기화 (첫 진입 시 오늘 포함 달)
+    if (!_calendarAnchor) {
+      const t = new Date();
+      _calendarAnchor = new Date(t.getFullYear(), t.getMonth(), 1);
+    }
+    renderAllActivities();
+  } catch (exc) {
+    body.innerHTML = `<tr><td class="text-center py-4 text-danger" colspan="8">로딩 실패: ${escHtml(String(exc))}</td></tr>`;
+    countEl.textContent = '오류';
+  }
+}
+
+function populateActivityFilterOptions() {
+  // 고객
+  const customerSel = document.getElementById('actFilterCustomer');
+  const seenCust = new Map();
+  _allActivitiesCache.forEach(a => { if (a.customer_id) seenCust.set(a.customer_id, a._company_name || a.customer_id); });
+  const curCust = customerSel.value;
+  customerSel.innerHTML = '<option value="">전체</option>' + Array.from(seenCust.entries())
+    .sort((a,b) => (a[1]||'').localeCompare(b[1]||''))
+    .map(([id,name]) => `<option value="${escHtml(id)}">${escHtml(name)}</option>`).join('');
+  customerSel.value = curCust;
+
+  // 진행 상태
+  const statusSel = document.getElementById('actFilterStatus');
+  const seenStatus = new Set();
+  _allActivitiesCache.forEach(a => {
+    const s = a.activity_status?.status || a.status; if (s) seenStatus.add(s);
+  });
+  const curStatus = statusSel.value;
+  statusSel.innerHTML = '<option value="">전체</option>' + Array.from(seenStatus).sort().map(s => {
+    const label = (ACT_STAT_LABEL[s] || [null, s])[1];
+    return `<option value="${escHtml(s)}">${escHtml(label)}</option>`;
+  }).join('');
+  statusSel.value = curStatus;
+
+  // NBA 승인
+  const apprSel = document.getElementById('actFilterApproval');
+  const seenAppr = new Set();
+  _allActivitiesCache.forEach(a => { const s = a.nba_approval?.status; if (s) seenAppr.add(s); });
+  const curAppr = apprSel.value;
+  apprSel.innerHTML = '<option value="">전체</option>' + Array.from(seenAppr).sort().map(s => {
+    const label = (ACT_APPR_LABEL[s] || [null, s])[1];
+    return `<option value="${escHtml(s)}">${escHtml(label)}</option>`;
+  }).join('');
+  apprSel.value = curAppr;
+}
+
+function resetActivityFilter() {
+  document.getElementById('actFilterCustomer').value = '';
+  document.getElementById('actFilterFrom').value = '';
+  document.getElementById('actFilterTo').value = '';
+  document.getElementById('actFilterStatus').value = '';
+  document.getElementById('actFilterApproval').value = '';
+  renderAllActivities();
+}
+
+function getFilteredActivities() {
+  const cust = document.getElementById('actFilterCustomer').value;
+  const from = document.getElementById('actFilterFrom').value;
+  const to = document.getElementById('actFilterTo').value;
+  const st = document.getElementById('actFilterStatus').value;
+  const appr = document.getElementById('actFilterApproval').value;
+
+  return _allActivitiesCache.filter(a => {
+    if (cust && a.customer_id !== cust) return false;
+    const dd = a.due_date || '';
+    if (from && dd && dd < from) return false;
+    if (to && dd && dd > to) return false;
+    if (from && !dd) return false;
+    if (to && !dd) return false;
+    const actSt = a.activity_status?.status || a.status || '';
+    if (st && actSt !== st) return false;
+    const apSt = a.nba_approval?.status || '';
+    if (appr && apSt !== appr) return false;
+    return true;
+  });
+}
+
+function setActivityView(mode) {
+  _activityView = mode;
+  document.getElementById('btnActivityListView').classList.toggle('active', mode === 'list');
+  document.getElementById('btnActivityCalendarView').classList.toggle('active', mode === 'calendar');
+  document.getElementById('activitiesListView').style.display = mode === 'list' ? '' : 'none';
+  document.getElementById('activitiesCalendarView').style.display = mode === 'calendar' ? '' : 'none';
+  renderAllActivities();
+}
+
+function renderAllActivities() {
+  const filtered = getFilteredActivities();
+  document.getElementById('activitiesAllCount').textContent = `${filtered.length}건 / 총 ${_allActivitiesCache.length}건`;
+  if (_activityView === 'list') renderActivityList(filtered);
+  else renderActivityCalendar(filtered);
+}
+
+function renderActivityList(items) {
+  const body = document.getElementById('activitiesListBody');
+  if (!items.length) {
+    body.innerHTML = '<tr><td class="text-center py-4 text-muted" colspan="8">표시할 Activity가 없습니다.</td></tr>';
+    return;
+  }
+  body.innerHTML = items.map(a => {
+    const nbaStatus = a.nba_approval?.status || '';
+    const [aCls, aText] = ACT_APPR_LABEL[nbaStatus] || ['appr-ai', nbaStatus || '-'];
+    const actSt = a.activity_status?.status || a.status || 'pending';
+    const [stCls, stText] = ACT_STAT_LABEL[actSt] || ['act-pending', actSt];
+    const nbaTitle = a.nba_approval?.linked_nba_title || a.linked_nba_action || '';
+    const key = `${a.customer_id}::${a.id || a.activity_id || ''}`;
+    return `<tr style="cursor:pointer" onclick="openActivityDetailByKey('${escHtml(key)}')">
+      <td class="fw-semibold">${escHtml(a.due_date || '')}</td>
+      <td>
+        <div class="fw-semibold small">${escHtml(a._company_name || a.customer_id)}</div>
+        <div class="text-muted" style="font-size:.72rem">${escHtml(a.customer_id)}</div>
+      </td>
+      <td class="text-muted small">${escHtml(a.id || a.activity_id || '')}</td>
+      <td><strong class="small">${escHtml(a.title || '')}</strong></td>
+      <td class="small">${escHtml(a.type || '')}</td>
+      <td><span class="approval-badge ${stCls}">${stText}</span></td>
+      <td><span class="approval-badge ${aCls}">${aText}</span></td>
+      <td class="text-muted small" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(nbaTitle)}">${escHtml(nbaTitle)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function calendarNav(delta) {
+  _calendarAnchor = new Date(_calendarAnchor.getFullYear(), _calendarAnchor.getMonth() + delta, 1);
+  renderAllActivities();
+}
+
+function calendarGoToday() {
+  const t = new Date();
+  _calendarAnchor = new Date(t.getFullYear(), t.getMonth(), 1);
+  renderAllActivities();
+}
+
+function renderActivityCalendar(items) {
+  const anchor = _calendarAnchor;
+  const year = anchor.getFullYear();
+  const month = anchor.getMonth();
+  document.getElementById('calendarTitle').textContent = `${year}년 ${month + 1}월`;
+  document.getElementById('calendarSummary').textContent = `필터 적용 ${items.length}건`;
+
+  // 날짜별 그룹핑 (due_date 기준)
+  const byDate = {};
+  items.forEach(a => {
+    const d = a.due_date || '';
+    if (!d) return;
+    (byDate[d] = byDate[d] || []).push(a);
+  });
+
+  const grid = document.getElementById('calendarGrid');
+  const firstDay = new Date(year, month, 1);
+  const startOffset = firstDay.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevDaysInMonth = new Date(year, month, 0).getDate();
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  let html = ['일','월','화','수','목','금','토'].map(d => `<div class="cal-head">${d}</div>`).join('');
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+
+  for (let i = 0; i < totalCells; i++) {
+    const dayNum = i - startOffset + 1;
+    let cellYear = year, cellMonth = month, cellDay = dayNum, muted = false;
+    if (dayNum < 1) { cellMonth = month - 1; cellDay = prevDaysInMonth + dayNum; muted = true; if (cellMonth < 0) { cellMonth = 11; cellYear--; } }
+    else if (dayNum > daysInMonth) { cellMonth = month + 1; cellDay = dayNum - daysInMonth; muted = true; if (cellMonth > 11) { cellMonth = 0; cellYear++; } }
+    const dateStr = `${cellYear}-${String(cellMonth + 1).padStart(2,'0')}-${String(cellDay).padStart(2,'0')}`;
+    const dayItems = byDate[dateStr] || [];
+    const isToday = dateStr === todayStr;
+
+    const maxVisible = 4;
+    const visible = dayItems.slice(0, maxVisible);
+    const overflow = dayItems.length - visible.length;
+    const itemsHtml = visible.map(a => {
+      const type = (a.type || '').toLowerCase();
+      const key = `${a.customer_id}::${a.id || a.activity_id || ''}`;
+      const label = `${a._company_name || a.customer_id} · ${a.type || ''}`;
+      return `<div class="cal-item type-${escHtml(type)}" title="${escHtml(a.title || '')}"
+        onclick="event.stopPropagation(); openActivityDetailByKey('${escHtml(key)}')">${escHtml(label)}</div>`;
+    }).join('');
+    const moreHtml = overflow > 0
+      ? `<div class="cal-more" onclick="event.stopPropagation(); openDayListModal('${dateStr}')">+${overflow} 더보기 …</div>`
+      : '';
+
+    html += `<div class="cal-cell ${muted ? 'cal-muted' : ''} ${isToday ? 'cal-today' : ''}">
+      <div class="cal-date">${cellDay}</div>
+      <div class="cal-items">${itemsHtml}${moreHtml}</div>
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function openDayListModal(dateStr) {
+  const items = _allActivitiesCache.filter(a => (a.due_date || '') === dateStr);
+  document.getElementById('dayActivityListTitle').textContent = `${dateStr} — ${items.length}건`;
+  const body = document.getElementById('dayActivityListBody');
+  body.innerHTML = items.map(a => {
+    const nbaStatus = a.nba_approval?.status || '';
+    const [aCls, aText] = ACT_APPR_LABEL[nbaStatus] || ['appr-ai', nbaStatus || '-'];
+    const actSt = a.activity_status?.status || a.status || 'pending';
+    const [stCls, stText] = ACT_STAT_LABEL[actSt] || ['act-pending', actSt];
+    const key = `${a.customer_id}::${a.id || a.activity_id || ''}`;
+    return `<div class="border rounded p-2 mb-2" style="cursor:pointer"
+      onclick="bootstrap.Modal.getInstance(document.getElementById('dayActivityListModal')).hide(); openActivityDetailByKey('${escHtml(key)}')">
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <strong class="small">${escHtml(a._company_name || a.customer_id)}</strong>
+        <span class="text-muted small">${escHtml(a.type || '')}</span>
+        <span class="approval-badge ${stCls} ms-auto">${stText}</span>
+        <span class="approval-badge ${aCls}">${aText}</span>
+      </div>
+      <div class="small">${escHtml(a.title || '')}</div>
+    </div>`;
+  }).join('') || '<div class="text-muted small">해당 날짜 Activity가 없습니다.</div>';
+  new bootstrap.Modal(document.getElementById('dayActivityListModal')).show();
+}
+
+function openActivityDetailByKey(key) {
+  const [cid, aid] = key.split('::');
+  const a = _allActivitiesCache.find(x => x.customer_id === cid && (x.id || x.activity_id || '') === aid);
+  if (!a) return;
+  const nbaStatus = a.nba_approval?.status || '';
+  const [aCls, aText] = ACT_APPR_LABEL[nbaStatus] || ['appr-ai', nbaStatus || '-'];
+  const actSt = a.activity_status?.status || a.status || 'pending';
+  const [stCls, stText] = ACT_STAT_LABEL[actSt] || ['act-pending', actSt];
+  const nbaTitle = a.nba_approval?.linked_nba_title || a.linked_nba_action || '';
+  const nbaRank = a.nba_approval?.linked_nba_rank ?? '';
+  const checklist = Array.isArray(a.checklist) ? a.checklist : [];
+  const actUpd = a.activity_status?.updated_at || '';
+  const actBy = a.activity_status?.updated_by || '';
+  const actNote = a.activity_status?.note || '';
+  const crmBy = a.nba_approval?.crm_approved_by || '';
+  const salesBy = a.nba_approval?.sales_approved_by || '';
+
+  document.getElementById('activityDetailBody').innerHTML = `
+    <table class="table table-sm table-bordered mb-3">
+      <tbody>
+        <tr><th class="table-light" style="width:30%">고객사</th><td><strong>${escHtml(a._company_name || a.customer_id)}</strong> <span class="text-muted small">(${escHtml(a.customer_id)})</span></td></tr>
+        <tr><th class="table-light">Activity ID</th><td class="small">${escHtml(a.id || a.activity_id || '')}</td></tr>
+        <tr><th class="table-light">제목</th><td class="fw-semibold">${escHtml(a.title || '')}</td></tr>
+        <tr><th class="table-light">유형 / 우선순위</th><td>${escHtml(a.type || '-')} · ${escHtml(a.priority || '-')}</td></tr>
+        <tr><th class="table-light">기한</th><td class="fw-semibold">${escHtml(a.due_date || '')}</td></tr>
+        <tr><th class="table-light">담당자</th><td>${escHtml(a.assigned_to || '-')}</td></tr>
+        <tr><th class="table-light">진행 상태</th><td>
+          <span class="approval-badge ${stCls}">${stText}</span>
+          ${actUpd ? `<span class="small text-muted ms-2">${escHtml(actUpd)}${actBy ? ' · ' + escHtml(actBy) : ''}</span>` : ''}
+          ${actNote ? `<div class="small text-muted mt-1">${escHtml(actNote)}</div>` : ''}
+        </td></tr>
+        <tr><th class="table-light">NBA 승인</th><td>
+          <span class="approval-badge ${aCls}">${aText}</span>
+          ${crmBy ? `<span class="small text-muted ms-2">CRM: ${escHtml(crmBy)}</span>` : ''}
+          ${salesBy ? `<span class="small text-muted ms-2">Sales: ${escHtml(salesBy)}</span>` : ''}
+        </td></tr>
+        <tr><th class="table-light">연계 NBA</th><td>${nbaRank !== '' ? `<span class="badge bg-dark me-1">Rank ${escHtml(String(nbaRank))}</span>` : ''}${escHtml(nbaTitle)}</td></tr>
+        <tr><th class="table-light">선행 Activity</th><td class="small">${escHtml(a.depends_on || '-')}</td></tr>
+      </tbody>
+    </table>
+    ${a.description ? `<div class="mb-3"><strong class="small text-muted d-block mb-1">실행 내용</strong>${escHtml(a.description)}</div>` : ''}
+    ${checklist.length ? `<div class="mb-3"><strong class="small text-muted d-block mb-1">체크리스트</strong><ul class="mb-0 small">${checklist.map(c => `<li>${escHtml(typeof c === 'string' ? c : JSON.stringify(c))}</li>`).join('')}</ul></div>` : ''}
+    ${a.expected_outcome ? `<div class="mb-3"><strong class="small text-muted d-block mb-1">기대 결과</strong>${escHtml(a.expected_outcome)}</div>` : ''}
+    <div class="text-end">
+      <a href="/customer/${escHtml(a.customer_id)}" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right me-1"></i>고객 상세 페이지로</a>
+    </div>
+  `;
+  new bootstrap.Modal(document.getElementById('activityDetailModal')).show();
 }
 
 // ─── 전체 NBA 조회 탭 ────────────────────────────────────────────────────────

@@ -849,6 +849,35 @@ async def api_all_sales_notes():
     return all_notes
 
 
+@app.get("/api/all-activities")
+async def api_all_activities():
+    """전체 고객 Activity를 플래튼해서 반환 (기한 오름차순).
+    각 레코드: {customer_id, _company_name, _tier, id, title, type, due_date,
+    activity_status, nba_approval, description, checklist, depends_on, expected_outcome,
+    _activities_updated_at}"""
+    envelopes = dt.get_all_activities()
+    customers = {c["customer_id"]: c for c in dt.get_all_customers() if "customer_id" in c}
+    out: list[dict] = []
+    for env in envelopes:
+        cid = env.get("customer_id", "")
+        cust = customers.get(cid, {})
+        company = cust.get("company_name", cid)
+        tier = cust.get("tier", "")
+        updated = env.get("updated_at")
+        for a in env.get("activities") or []:
+            if not isinstance(a, dict):
+                continue
+            item = dict(a)
+            item["customer_id"] = cid
+            item["_company_name"] = company
+            item["_tier"] = tier
+            item["_activities_updated_at"] = updated
+            out.append(item)
+    # 기한 오름차순 (빈 값은 뒤로)
+    out.sort(key=lambda x: (not x.get("due_date"), x.get("due_date") or ""))
+    return out
+
+
 @app.get("/api/all-nba")
 async def api_all_nba():
     """전체 고객 NBA 추천 조회 (고객 정보 포함, 최신 분석일 내림차순)"""
@@ -1207,6 +1236,95 @@ async def api_run_nba_all(force: bool = False):
             yield f'data: {json.dumps({"type": "error", "text": str(e)}, ensure_ascii=False)}\n\n'
         finally:
             running_set.discard("nba-all")
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+def _run_activity_all_thread(customers: list, q: queue.Queue, model: str, provider: str) -> None:
+    """전체 고객 Activity를 순차적으로 업데이트하면서 진행 상황을 queue에 put.
+    NBA 결과가 없는 고객은 스킵 (ActivityAgent가 NBA에 의존)."""
+    total = len(customers)
+    for i, c in enumerate(customers, 1):
+        cid = c.get("customer_id", "")
+        name = c.get("company_name", cid)
+        try:
+            nba = dt.get_nba(cid)
+            if not nba:
+                q.put({
+                    "type": "progress", "index": i, "total": total,
+                    "customer_id": cid, "company_name": name,
+                    "status": "skipped", "error": "NBA 미생성 — 먼저 전체 NBA 추천을 실행하세요",
+                })
+                continue
+            q.put({"type": "progress", "index": i, "total": total, "customer_id": cid, "company_name": name, "status": "started"})
+            agent = ActivityAgent(model=model, provider=provider)
+            agent.run(cid)
+            q.put({"type": "progress", "index": i, "total": total, "customer_id": cid, "company_name": name, "status": "done"})
+        except Exception as exc:
+            import traceback; traceback.print_exc()
+            q.put({"type": "progress", "index": i, "total": total, "customer_id": cid, "company_name": name, "status": "error", "error": f"{type(exc).__name__}: {exc}"})
+    q.put(None)
+
+
+@app.get("/api/run/activity-all")
+async def api_run_activity_all():
+    """전체 고객 Activity 일괄 업데이트 (SSE). NBA 미생성 고객은 자동 스킵."""
+    if "activity-all" in running_set:
+        async def _busy():
+            yield f'data: {json.dumps({"type": "error", "text": "이미 전체 Activity 업데이트가 진행 중입니다."})}\n\n'
+        return StreamingResponse(_busy(), media_type="text/event-stream")
+
+    customers = dt.get_all_customers() or []
+    if not customers:
+        async def _empty():
+            yield f'data: {json.dumps({"type": "error", "text": "고객이 없습니다."})}\n\n'
+        return StreamingResponse(_empty(), media_type="text/event-stream")
+
+    selected = _model_setting["model"]
+    meta = MODEL_REGISTRY.get(selected, MODEL_REGISTRY["claude-opus-4-6"])
+    provider = meta["provider"]
+
+    async def event_stream() -> AsyncGenerator[str, None]:
+        q: queue.Queue = queue.Queue()
+        running_set.add("activity-all")
+        t = threading.Thread(
+            target=_run_activity_all_thread,
+            args=(customers, q, selected, provider),
+            daemon=True,
+        )
+        t.start()
+
+        succeeded, failed, skipped = 0, 0, 0
+        try:
+            while True:
+                try:
+                    msg = q.get(timeout=0.1)
+                except queue.Empty:
+                    yield ": heartbeat\n\n"
+                    continue
+
+                if msg is None:
+                    ts = dt.now_kst_str("%Y-%m-%d %H:%M:%S")
+                    yield f'data: {json.dumps({"type": "done", "total": len(customers), "succeeded": succeeded, "failed": failed, "skipped": skipped, "completed_at": ts}, ensure_ascii=False)}\n\n'
+                    break
+
+                if isinstance(msg, dict) and msg.get("type") == "progress":
+                    status = msg.get("status")
+                    if status == "done":
+                        succeeded += 1
+                    elif status == "error":
+                        failed += 1
+                    elif status == "skipped":
+                        skipped += 1
+                    yield f'data: {json.dumps(msg, ensure_ascii=False)}\n\n'
+        except Exception as e:
+            yield f'data: {json.dumps({"type": "error", "text": str(e)}, ensure_ascii=False)}\n\n'
+        finally:
+            running_set.discard("activity-all")
 
     return StreamingResponse(
         event_stream(),
