@@ -561,6 +561,15 @@ def get_qc_report(customer_id: str) -> dict | None:
         return None
 
 
+def get_all_qc_reports() -> list:
+    try:
+        from db.database import QCReport
+        with _session() as session:
+            return [row.data for row in session.query(QCReport).all()]
+    except Exception:
+        return []
+
+
 # ─── 전체 컨텍스트 조합 ───────────────────────────────────────────────────────
 
 def get_recent_notes_with_weights(customer_id: str, analysis_date: str = None, months: int = 3, since_date: str = None) -> dict:

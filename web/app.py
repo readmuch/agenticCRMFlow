@@ -849,6 +849,20 @@ async def api_all_sales_notes():
     return all_notes
 
 
+@app.get("/api/all-qc")
+async def api_all_qc():
+    """전체 고객 QC 검수 결과 조회 (고객 정보 병합, reviewed_at 내림차순)"""
+    qc_list = dt.get_all_qc_reports()
+    customers = {c["customer_id"]: c for c in dt.get_all_customers() if "customer_id" in c}
+    for q in qc_list:
+        cid = q.get("customer_id")
+        if cid and cid in customers:
+            q["_company_name"] = customers[cid].get("company_name", cid)
+            q["_tier"] = customers[cid].get("tier", "")
+    qc_list.sort(key=lambda x: x.get("reviewed_at") or "", reverse=True)
+    return qc_list
+
+
 @app.get("/api/all-activities")
 async def api_all_activities():
     """전체 고객 Activity를 플래튼해서 반환 (기한 오름차순).
@@ -1340,6 +1354,98 @@ async def api_run_activity_all():
             yield f'data: {json.dumps({"type": "error", "text": str(e)}, ensure_ascii=False)}\n\n'
         finally:
             running_set.discard("activity-all")
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+def _run_qc_all_thread(customers: list, q: queue.Queue, model: str, provider: str) -> None:
+    """전체 고객 QC를 순차 실행. Persona/NBA/Activity 중 하나라도 없으면 skip."""
+    total = len(customers)
+    for i, c in enumerate(customers, 1):
+        cid = c.get("customer_id", "")
+        name = c.get("company_name", cid)
+        try:
+            missing = []
+            if not dt.get_persona(cid): missing.append("Persona")
+            if not dt.get_nba(cid): missing.append("NBA")
+            if not dt.get_activities(cid): missing.append("Activity")
+            if missing:
+                q.put({
+                    "type": "progress", "index": i, "total": total,
+                    "customer_id": cid, "company_name": name,
+                    "status": "skipped",
+                    "error": f"{', '.join(missing)} 미생성 — 해당 탭에서 일괄 실행 후 다시 시도하세요",
+                })
+                continue
+            q.put({"type": "progress", "index": i, "total": total, "customer_id": cid, "company_name": name, "status": "started"})
+            agent = QCAgent(model=model, provider=provider)
+            agent.run(cid)
+            q.put({"type": "progress", "index": i, "total": total, "customer_id": cid, "company_name": name, "status": "done"})
+        except Exception as exc:
+            import traceback; traceback.print_exc()
+            q.put({"type": "progress", "index": i, "total": total, "customer_id": cid, "company_name": name, "status": "error", "error": f"{type(exc).__name__}: {exc}"})
+    q.put(None)
+
+
+@app.get("/api/run/qc-all")
+async def api_run_qc_all():
+    """전체 고객 QC 검수 일괄 실행 (SSE). Persona/NBA/Activity 의존성 미충족 시 자동 스킵."""
+    if "qc-all" in running_set:
+        async def _busy():
+            yield f'data: {json.dumps({"type": "error", "text": "이미 전체 QC 검수가 진행 중입니다."})}\n\n'
+        return StreamingResponse(_busy(), media_type="text/event-stream")
+
+    customers = dt.get_all_customers() or []
+    if not customers:
+        async def _empty():
+            yield f'data: {json.dumps({"type": "error", "text": "고객이 없습니다."})}\n\n'
+        return StreamingResponse(_empty(), media_type="text/event-stream")
+
+    selected = _model_setting["model"]
+    meta = MODEL_REGISTRY.get(selected, MODEL_REGISTRY["claude-opus-4-6"])
+    provider = meta["provider"]
+
+    async def event_stream() -> AsyncGenerator[str, None]:
+        q: queue.Queue = queue.Queue()
+        running_set.add("qc-all")
+        t = threading.Thread(
+            target=_run_qc_all_thread,
+            args=(customers, q, selected, provider),
+            daemon=True,
+        )
+        t.start()
+
+        succeeded, failed, skipped = 0, 0, 0
+        try:
+            while True:
+                try:
+                    msg = q.get(timeout=0.1)
+                except queue.Empty:
+                    yield ": heartbeat\n\n"
+                    continue
+
+                if msg is None:
+                    ts = dt.now_kst_str("%Y-%m-%d %H:%M:%S")
+                    yield f'data: {json.dumps({"type": "done", "total": len(customers), "succeeded": succeeded, "failed": failed, "skipped": skipped, "completed_at": ts}, ensure_ascii=False)}\n\n'
+                    break
+
+                if isinstance(msg, dict) and msg.get("type") == "progress":
+                    status = msg.get("status")
+                    if status == "done":
+                        succeeded += 1
+                    elif status == "error":
+                        failed += 1
+                    elif status == "skipped":
+                        skipped += 1
+                    yield f'data: {json.dumps(msg, ensure_ascii=False)}\n\n'
+        except Exception as e:
+            yield f'data: {json.dumps({"type": "error", "text": str(e)}, ensure_ascii=False)}\n\n'
+        finally:
+            running_set.discard("qc-all")
 
     return StreamingResponse(
         event_stream(),
