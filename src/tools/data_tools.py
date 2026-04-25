@@ -535,6 +535,76 @@ def get_activities_updated_at(customer_id: str) -> str | None:
         return None
 
 
+# ─── 단일 Activity 부분 갱신 (데모용 토글 UI) ────────────────────────────────
+
+ACTIVITY_STATUS_VALUES = ("pending", "in_progress", "completed", "cancelled")
+NBA_APPROVAL_VALUES = ("ai_proposed", "crm_approved", "sales_approved")
+
+
+def update_activity_field(customer_id: str, activity_id: str, field: str, status: str) -> dict | None:
+    """Activity 한 건의 activity_status 또는 nba_approval status를 부분 갱신.
+
+    field: "activity_status" | "nba_approval"
+    status: 해당 필드의 허용 값 (위 상수 참조)
+    반환: 갱신된 activity dict (찾지 못하면 None)
+    """
+    if field == "activity_status":
+        if status not in ACTIVITY_STATUS_VALUES:
+            raise ValueError(f"invalid activity_status: {status}")
+    elif field == "nba_approval":
+        if status not in NBA_APPROVAL_VALUES:
+            raise ValueError(f"invalid nba_approval: {status}")
+    else:
+        raise ValueError(f"unknown field: {field}")
+
+    from db.database import ActivitySchedule, flag_modified
+    now = now_kst_str()
+    with _session() as session:
+        row = session.query(ActivitySchedule).filter_by(customer_id=customer_id).first()
+        if not row:
+            return None
+        envelope = row.data if isinstance(row.data, dict) else {}
+        activities = envelope.get("activities") if isinstance(envelope, dict) else None
+        # 레거시 리스트 스키마 수용
+        if activities is None and isinstance(row.data, list):
+            activities = row.data
+            envelope = {"activities": activities, "updated_at": envelope.get("updated_at") if isinstance(envelope, dict) else None}
+        if not isinstance(activities, list):
+            return None
+
+        target = None
+        for a in activities:
+            if not isinstance(a, dict):
+                continue
+            aid = a.get("id") or a.get("activity_id")
+            if aid == activity_id:
+                target = a
+                break
+        if target is None:
+            return None
+
+        if field == "activity_status":
+            sub = target.get("activity_status")
+            if not isinstance(sub, dict):
+                sub = {}
+            sub["status"] = status
+            sub["updated_at"] = now
+            target["activity_status"] = sub
+        else:  # nba_approval
+            sub = target.get("nba_approval")
+            if not isinstance(sub, dict):
+                sub = {}
+            sub["status"] = status
+            target["nba_approval"] = sub
+
+        envelope["activities"] = activities
+        envelope["updated_at"] = now
+        row.data = envelope
+        flag_modified(row, "data")
+        session.commit()
+        return target
+
+
 # ─── QC 보고서 관리 (DB) ──────────────────────────────────────────────────────
 
 def save_qc_report(customer_id: str, report: dict) -> None:

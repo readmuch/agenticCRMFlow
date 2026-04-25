@@ -863,6 +863,29 @@ async def api_all_qc():
     return qc_list
 
 
+class ActivityFieldUpdate(BaseModel):
+    field: str   # "activity_status" | "nba_approval"
+    status: str
+
+
+@app.patch("/api/activity/{customer_id}/{activity_id}")
+async def api_update_activity_field(customer_id: str, activity_id: str, payload: ActivityFieldUpdate):
+    """단일 Activity의 진행상태 또는 NBA 승인 status를 부분 갱신 (데모 토글 UI용)."""
+    try:
+        updated = dt.update_activity_field(customer_id, activity_id, payload.field, payload.status)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    if updated is None:
+        return JSONResponse({"error": "activity not found"}, status_code=404)
+    return {
+        "ok": True,
+        "customer_id": customer_id,
+        "activity_id": activity_id,
+        "activity_status": updated.get("activity_status"),
+        "nba_approval": updated.get("nba_approval"),
+    }
+
+
 @app.get("/api/all-activities")
 async def api_all_activities():
     """전체 고객 Activity를 플래튼해서 반환 (기한 오름차순).

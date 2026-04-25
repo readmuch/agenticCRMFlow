@@ -52,7 +52,11 @@
     .action-item.avoid { border-color: #dc3545; background: #fff5f5; }
 
     /* Activity 테이블 */
-    .approval-badge { font-size: .72rem; padding: .2em .55em; border-radius: 10px; font-weight: 600; }
+    .approval-badge { font-size: .72rem; padding: .2em .55em; border-radius: 10px; font-weight: 600; display:inline-block; }
+    .badge-toggle { cursor: pointer; user-select: none; transition: transform .08s, opacity .15s; }
+    .badge-toggle:hover { transform: scale(1.06); }
+    .badge-toggle:active { transform: scale(.96); }
+    .badge-toggle.is-saving { opacity: .5; pointer-events: none; }
     .appr-ai      { background: #fff3cd; color: #856404; }
     .appr-crm     { background: #cfe2ff; color: #084298; }
     .appr-sales   { background: #d1e7dd; color: #0a3622; }
@@ -785,9 +789,53 @@ function renderNBA(nba) {
 }
 
 // ─── Activity 렌더링 ──────────────────────────────────────────────────────────
+let _currentActivities = [];
+let _currentActivitiesUpdatedAt = null;
+const ACT_STATUS_CYCLE = ['pending','in_progress','completed','cancelled'];
+const NBA_APPROVAL_CYCLE = ['ai_proposed','crm_approved','sales_approved'];
+
+function _nextInCycle(cycle, current) {
+  const i = cycle.indexOf(current);
+  return cycle[(i < 0 ? 0 : (i + 1) % cycle.length)];
+}
+
+async function toggleActivityBadge(el) {
+  if (!el || el.classList.contains('is-saving')) return;
+  const aid = el.dataset.aid;
+  const field = el.dataset.field;
+  if (!aid || !field) return;
+  const current = el.dataset.status || '';
+  const cycle = field === 'activity_status' ? ACT_STATUS_CYCLE : NBA_APPROVAL_CYCLE;
+  const next = _nextInCycle(cycle, current);
+  el.classList.add('is-saving');
+  try {
+    const res = await fetch(`/api/activity/${encodeURIComponent(CUSTOMER_ID)}/${encodeURIComponent(aid)}`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({field, status: next}),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const target = _currentActivities.find(x => (x.id || x.activity_id || '') === aid);
+    if (target) {
+      if (data.activity_status) target.activity_status = data.activity_status;
+      if (data.nba_approval) target.nba_approval = data.nba_approval;
+    }
+    renderActivity(_currentActivities, _currentActivitiesUpdatedAt);
+  } catch (e) {
+    alert('상태 변경 실패: ' + (e.message || e));
+    el.classList.remove('is-saving');
+  }
+}
+
 function renderActivity(activities, updatedAt) {
   const el = document.getElementById('content-activity');
   const st = document.getElementById('status-activity');
+  _currentActivities = Array.isArray(activities) ? activities : [];
+  _currentActivitiesUpdatedAt = updatedAt || null;
   if (!activities || activities.length === 0) {
     el.innerHTML = '<div class="text-muted small">Activity 데이터가 없습니다.</div>';
     if (updatedAt) {
@@ -808,14 +856,19 @@ function renderActivity(activities, updatedAt) {
     const [stCls, stText] = actLabel[actSt] || ['act-pending', actSt];
     // 연결된 NBA
     const nbaTitle = a.nba_approval?.linked_nba_title || a.linked_nba_action || '';
+    const aid = a.id || a.activity_id || '';
 
     return `<tr>
-      <td class="text-muted small">${escHtml(a.id || a.activity_id || '')}</td>
+      <td class="text-muted small">${escHtml(aid)}</td>
       <td><strong class="small">${escHtml(a.title || '')}</strong></td>
       <td class="small">${escHtml(a.type || '')}</td>
       <td class="small fw-semibold">${escHtml(a.due_date || '')}</td>
-      <td><span class="approval-badge ${stCls}">${stText}</span></td>
-      <td><span class="approval-badge ${aCls}">${aText}</span></td>
+      <td><span class="approval-badge badge-toggle ${stCls}" title="클릭하여 다음 상태로 변경"
+        data-aid="${escHtml(aid)}" data-field="activity_status" data-status="${escHtml(actSt)}"
+        onclick="toggleActivityBadge(this)">${stText}</span></td>
+      <td><span class="approval-badge badge-toggle ${aCls}" title="클릭하여 다음 승인 단계로 변경"
+        data-aid="${escHtml(aid)}" data-field="nba_approval" data-status="${escHtml(nbaStatus)}"
+        onclick="toggleActivityBadge(this)">${aText}</span></td>
       <td class="text-muted small" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(nbaTitle)}">${escHtml(nbaTitle)}</td>
     </tr>`;
   }).join('');

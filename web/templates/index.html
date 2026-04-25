@@ -725,6 +725,10 @@
   .issue-minor    { background: #f0f4ff; border-left: 4px solid #6c757d; }
   /* Activity 뱃지 (customer.html 스타일 이식) */
   .approval-badge { font-size: .72rem; padding: .2em .55em; border-radius: 10px; font-weight: 600; display:inline-block; }
+  .badge-toggle { cursor: pointer; user-select: none; transition: transform .08s, opacity .15s; }
+  .badge-toggle:hover { transform: scale(1.06); }
+  .badge-toggle:active { transform: scale(.96); }
+  .badge-toggle.is-saving { opacity: .5; pointer-events: none; }
   .appr-ai      { background: #fff3cd; color: #856404; }
   .appr-crm     { background: #cfe2ff; color: #084298; }
   .appr-sales   { background: #d1e7dd; color: #0a3622; }
@@ -1812,6 +1816,53 @@ function setActivitySort(key) {
 
 const ACT_APPR_LABEL = { ai_proposed: ['appr-ai','AI 제안'], crm_approved: ['appr-crm','CRM 승인'], sales_approved: ['appr-sales','Sales 승인'] };
 const ACT_STAT_LABEL = { pending: ['act-pending','대기'], in_progress: ['act-progress','진행중'], completed: ['act-done','완료'], cancelled: ['act-cancelled','취소'] };
+const ACT_STATUS_CYCLE = ['pending','in_progress','completed','cancelled'];
+const NBA_APPROVAL_CYCLE = ['ai_proposed','crm_approved','sales_approved'];
+
+function _nextInCycle(cycle, current) {
+  const i = cycle.indexOf(current);
+  return cycle[(i < 0 ? 0 : (i + 1) % cycle.length)];
+}
+
+async function toggleActivityBadge(el) {
+  if (!el || el.classList.contains('is-saving')) return;
+  const cid = el.dataset.cid;
+  const aid = el.dataset.aid;
+  const field = el.dataset.field;
+  if (!cid || !aid || !field) return;
+  const current = el.dataset.status || '';
+  const cycle = field === 'activity_status' ? ACT_STATUS_CYCLE : NBA_APPROVAL_CYCLE;
+  const next = _nextInCycle(cycle, current);
+  el.classList.add('is-saving');
+  try {
+    const res = await fetch(`/api/activity/${encodeURIComponent(cid)}/${encodeURIComponent(aid)}`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({field, status: next}),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    // 캐시 동기화
+    const item = _allActivitiesCache.find(x => x.customer_id === cid && (x.id || x.activity_id || '') === aid);
+    if (item) {
+      if (data.activity_status) item.activity_status = data.activity_status;
+      if (data.nba_approval) item.nba_approval = data.nba_approval;
+    }
+    // 현재 활성 뷰 재렌더
+    renderAllActivities();
+    // 상세 모달이 열려있다면 모달 본문도 재렌더
+    const modalEl = document.getElementById('activityDetailModal');
+    if (modalEl && modalEl.classList.contains('show')) {
+      openActivityDetailByKey(`${cid}::${aid}`);
+    }
+  } catch (e) {
+    alert('상태 변경 실패: ' + (e.message || e));
+    el.classList.remove('is-saving');
+  }
+}
 
 async function loadAllActivities(forceRefresh) {
   const body = document.getElementById('activitiesListBody');
@@ -1964,17 +2015,22 @@ function renderActivityList(items) {
     const [stCls, stText] = ACT_STAT_LABEL[actSt] || ['act-pending', actSt];
     const nbaTitle = a.nba_approval?.linked_nba_title || a.linked_nba_action || '';
     const key = `${a.customer_id}::${a.id || a.activity_id || ''}`;
+    const aid = a.id || a.activity_id || '';
     return `<tr style="cursor:pointer" onclick="openActivityDetailByKey('${escHtml(key)}')">
       <td class="fw-semibold">${escHtml(a.due_date || '')}</td>
       <td>
         <div class="fw-semibold small">${escHtml(a._company_name || a.customer_id)}</div>
         <div class="text-muted" style="font-size:.72rem">${escHtml(a.customer_id)}</div>
       </td>
-      <td class="text-muted small">${escHtml(a.id || a.activity_id || '')}</td>
+      <td class="text-muted small">${escHtml(aid)}</td>
       <td><strong class="small">${escHtml(a.title || '')}</strong></td>
       <td class="small">${escHtml(a.type || '')}</td>
-      <td><span class="approval-badge ${stCls}">${stText}</span></td>
-      <td><span class="approval-badge ${aCls}">${aText}</span></td>
+      <td><span class="approval-badge badge-toggle ${stCls}" title="클릭하여 다음 상태로 변경"
+        data-cid="${escHtml(a.customer_id)}" data-aid="${escHtml(aid)}" data-field="activity_status" data-status="${escHtml(actSt)}"
+        onclick="event.stopPropagation(); toggleActivityBadge(this)">${stText}</span></td>
+      <td><span class="approval-badge badge-toggle ${aCls}" title="클릭하여 다음 승인 단계로 변경"
+        data-cid="${escHtml(a.customer_id)}" data-aid="${escHtml(aid)}" data-field="nba_approval" data-status="${escHtml(nbaStatus)}"
+        onclick="event.stopPropagation(); toggleActivityBadge(this)">${aText}</span></td>
       <td class="text-muted small" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(nbaTitle)}">${escHtml(nbaTitle)}</td>
     </tr>`;
   }).join('');
@@ -2056,14 +2112,19 @@ function openDayListModal(dateStr) {
     const [aCls, aText] = ACT_APPR_LABEL[nbaStatus] || ['appr-ai', nbaStatus || '-'];
     const actSt = a.activity_status?.status || a.status || 'pending';
     const [stCls, stText] = ACT_STAT_LABEL[actSt] || ['act-pending', actSt];
-    const key = `${a.customer_id}::${a.id || a.activity_id || ''}`;
+    const aid = a.id || a.activity_id || '';
+    const key = `${a.customer_id}::${aid}`;
     return `<div class="border rounded p-2 mb-2" style="cursor:pointer"
       onclick="bootstrap.Modal.getInstance(document.getElementById('dayActivityListModal')).hide(); openActivityDetailByKey('${escHtml(key)}')">
       <div class="d-flex align-items-center gap-2 mb-1">
         <strong class="small">${escHtml(a._company_name || a.customer_id)}</strong>
         <span class="text-muted small">${escHtml(a.type || '')}</span>
-        <span class="approval-badge ${stCls} ms-auto">${stText}</span>
-        <span class="approval-badge ${aCls}">${aText}</span>
+        <span class="approval-badge badge-toggle ${stCls} ms-auto" title="클릭하여 다음 상태로 변경"
+          data-cid="${escHtml(a.customer_id)}" data-aid="${escHtml(aid)}" data-field="activity_status" data-status="${escHtml(actSt)}"
+          onclick="event.stopPropagation(); toggleActivityBadge(this)">${stText}</span>
+        <span class="approval-badge badge-toggle ${aCls}" title="클릭하여 다음 승인 단계로 변경"
+          data-cid="${escHtml(a.customer_id)}" data-aid="${escHtml(aid)}" data-field="nba_approval" data-status="${escHtml(nbaStatus)}"
+          onclick="event.stopPropagation(); toggleActivityBadge(this)">${aText}</span>
       </div>
       <div class="small">${escHtml(a.title || '')}</div>
     </div>`;
@@ -2098,12 +2159,16 @@ function openActivityDetailByKey(key) {
         <tr><th class="table-light">기한</th><td class="fw-semibold">${escHtml(a.due_date || '')}</td></tr>
         <tr><th class="table-light">담당자</th><td>${escHtml(a.assigned_to || '-')}</td></tr>
         <tr><th class="table-light">진행 상태</th><td>
-          <span class="approval-badge ${stCls}">${stText}</span>
+          <span class="approval-badge badge-toggle ${stCls}" title="클릭하여 다음 상태로 변경"
+            data-cid="${escHtml(a.customer_id)}" data-aid="${escHtml(aid)}" data-field="activity_status" data-status="${escHtml(actSt)}"
+            onclick="toggleActivityBadge(this)">${stText}</span>
           ${actUpd ? `<span class="small text-muted ms-2">${escHtml(actUpd)}${actBy ? ' · ' + escHtml(actBy) : ''}</span>` : ''}
           ${actNote ? `<div class="small text-muted mt-1">${escHtml(actNote)}</div>` : ''}
         </td></tr>
         <tr><th class="table-light">NBA 승인</th><td>
-          <span class="approval-badge ${aCls}">${aText}</span>
+          <span class="approval-badge badge-toggle ${aCls}" title="클릭하여 다음 승인 단계로 변경"
+            data-cid="${escHtml(a.customer_id)}" data-aid="${escHtml(aid)}" data-field="nba_approval" data-status="${escHtml(nbaStatus)}"
+            onclick="toggleActivityBadge(this)">${aText}</span>
           ${crmBy ? `<span class="small text-muted ms-2">CRM: ${escHtml(crmBy)}</span>` : ''}
           ${salesBy ? `<span class="small text-muted ms-2">Sales: ${escHtml(salesBy)}</span>` : ''}
         </td></tr>
