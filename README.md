@@ -21,7 +21,7 @@ AI 기반 기관투자자 영업 지원 CRM. Claude 멀티에이전트 파이프
 - **세일즈 노트 일괄 업로드** — CSV 파싱 → 행별 검증 → 유효 행만 DB 반영 2단계
 - **페르소나 전체 조회** — 테이블/상세 스택 뷰, 사용자 선택 컬럼
 - **전체 NBA 추천** — 고객별 카드 스택. 최우선 액션 vs 노트 Action_Point 비교 + RED FLAG 경고(고객 상세와 동일 스타일)
-- **전체 Activity** — 리스트 뷰(컬럼 클릭 정렬, 기본 기한 오름차순) / 월 달력 뷰 토글. 필터: 고객·기한 from-to·진행 상태·NBA 승인 상태. 달력 셀은 하루 최대 4개 + `+N 더보기`로 전체 리스트 모달. 아이템 클릭 시 Activity 상세 모달
+- **전체 Activity** — 리스트 뷰(컬럼 클릭 정렬, 기본 기한 오름차순) / 월 달력 뷰 토글. 필터: 고객·기한 from-to·진행 상태·NBA 승인 상태. 달력 셀은 하루 최대 4개 + `+N 더보기`로 전체 리스트 모달. 아이템 클릭 시 Activity 상세 모달. **진행 상태/NBA 승인 배지 클릭 시 다음 단계로 즉시 토글**(데모용, DB에 영속)
 - **전체 QC 검수** — 카드 스택. 필터: 검색·등급·판정·최소 점수. 정렬: 최근 검수 / 점수 낮은순 / 점수 높은순. 부문별 점수 · critical issues · 재처리 필요 배지
 
 ### AI 어시스턴트
@@ -29,7 +29,7 @@ AI 기반 기관투자자 영업 지원 CRM. Claude 멀티에이전트 파이프
 - **멀티 모델** — Claude Opus/Sonnet(Anthropic), OpenRouter 무료 모델(Gemma·GPT-OSS·GLM·MiniMax) 선택
 
 ### 데이터 품질
-- **NBA 승인 워크플로우** — AI 제안 → CRM 승인 → Sales 승인 3단계. 각 Activity는 연결된 NBA 액션의 승인 상태를 미러링
+- **NBA 승인 워크플로우** — AI 제안 → CRM 승인 → Sales 승인 3단계. 각 Activity는 연결된 NBA 액션의 승인 상태를 미러링. 데모 환경에서는 전체 Activity 화면과 고객 상세 화면 모두에서 배지 클릭으로 다음 단계로 토글 가능 (서버 PATCH로 즉시 영속)
 - **고객 불만 징후 탐지** — `DislikeCheckerAgent`가 선택 노트의 `Action_Point`를 페르소나 `explicit_dislikes`와 의미 매칭해 RED FLAG 플래그. 결과는 노트에 영속되어 테이블 행 하이라이트 + NBA 비교 패널 경고로 재사용
 - **QC 보고서** — 페르소나 / NBA / Activity / 일관성 각 부문별 점수 + 판정(pass/fail) + critical issues
 
@@ -62,12 +62,13 @@ web/app.py (FastAPI)
     │   ├── GET /api/run/activity-all     ── Activity 일괄 (NBA 미생성 스킵)
     │   └── GET /api/run/qc-all           ── QC 일괄 (Persona/NBA/Activity 중 하나라도 없으면 스킵)
     │
-    ├── 전체 조회
-    │   ├── GET /api/all-personas         ── 전체 페르소나 + 고객 메타
-    │   ├── GET /api/all-nba              ── 전체 NBA + 고객 메타 + 매칭 노트 RED FLAG 조인
-    │   ├── GET /api/all-activities       ── 전체 Activity 플래튼 (기한 오름차순)
-    │   ├── GET /api/all-qc               ── 전체 QC (reviewed_at 내림차순)
-    │   └── GET /api/all-sales-notes      ── 전체 노트 통합 (날짜 내림차순)
+    ├── 전체 조회 / 부분 갱신
+    │   ├── GET   /api/all-personas         ── 전체 페르소나 + 고객 메타
+    │   ├── GET   /api/all-nba              ── 전체 NBA + 고객 메타 + 매칭 노트 RED FLAG 조인
+    │   ├── GET   /api/all-activities       ── 전체 Activity 플래튼 (기한 오름차순)
+    │   ├── PATCH /api/activity/{cid}/{aid} ── 단일 Activity status 토글 (UI 인라인 편집)
+    │   ├── GET   /api/all-qc               ── 전체 QC (reviewed_at 내림차순)
+    │   └── GET   /api/all-sales-notes      ── 전체 노트 통합 (날짜 내림차순)
     │
     ├── CRUD
     │   ├── GET|POST|DELETE /api/customers                ── 고객 (자동 채번, 캐스케이드 삭제)
@@ -138,7 +139,7 @@ sales_notes             ※ sales_notes.data JSON에 _red_flag 메타 영속
 - **영업 노트** — 과거 활동 기록 아코디언 (Action_Point 강조), 새 노트 추가 모달
 - **Persona 섹션** — 고객 선호도 프로파일, `Persona 업데이트`, 마지막 업데이트 KST 타임스탬프
 - **NBA 섹션** — 우선순위별 영업 액션, `NBA 제안`, 참고 노트 비교 테이블, 승인 상태 배지. 최우선 액션 vs 노트 비교 패널에서 해당 노트가 RED FLAG인 경우 빨간 경고 배너 + 카드 테두리 강조
-- **Activity 섹션** — Activity 일정표, `Activity 업데이트`, NBA 승인 상태 · 진행 상태 컬럼
+- **Activity 섹션** — Activity 일정표, `Activity 업데이트`, NBA 승인 상태 · 진행 상태 컬럼. **두 배지 모두 클릭 시 다음 단계로 토글**(전체 Activity 화면과 양방향 동일 상태 공유)
 - **QC 섹션** — 품질 검수 보고서, `QC 검수 실행`, 점수 circle + 판정 배지 + critical issues
 
 ---
@@ -188,6 +189,13 @@ NBA 추천 결과의 각 액션은 3단계 승인 상태를 가집니다:
 | `sales_approved` | 세일즈 담당자가 최종 승인, 즉시 실행 가능 | 초록 |
 
 Activity 섹션의 각 Activity는 연결된 NBA 액션의 승인 상태를 그대로 미러링하며, 진행 상태(`pending` / `in_progress` / `completed` / `cancelled`)를 별도로 관리합니다.
+
+**데모용 인라인 토글** — 전체 Activity 화면(리스트/달력 day-list/상세 모달)과 고객 상세 페이지의 Activity 일정표 모두에서 진행 상태·NBA 승인 배지를 클릭하면 다음 값으로 순환합니다:
+
+- 진행 상태: `pending → in_progress → completed → cancelled → pending`
+- NBA 승인: `ai_proposed → crm_approved → sales_approved → ai_proposed`
+
+클릭 즉시 `PATCH /api/activity/{customer_id}/{activity_id}`로 DB에 영속되며, 두 화면이 동일 데이터를 공유합니다 (반대 화면에 새로 진입하거나 새로고침하면 최신 값이 노출). 정식 승인 권한 분리·감사 로그·Maker-Checker 등 워크플로우는 [`docs/NBA_APPROVAL_WORKFLOW_PLAN.md`](docs/NBA_APPROVAL_WORKFLOW_PLAN.md) 및 [`docs/AUTH_USER_MANAGEMENT_PLAN.md`](docs/AUTH_USER_MANAGEMENT_PLAN.md) 참조.
 
 ---
 
@@ -329,6 +337,7 @@ python src/main.py --all
 | `GET` | `/api/all-personas` | 전체 페르소나 + 고객 메타 |
 | `GET` | `/api/all-nba` | 전체 NBA + 고객 메타 + 매칭 노트 RED FLAG 조인 |
 | `GET` | `/api/all-activities` | 전체 Activity 플래튼 (기한 오름차순) |
+| `PATCH` | `/api/activity/{cid}/{aid}` | 단일 Activity의 `activity_status` 또는 `nba_approval` status 토글 (body: `{field, status}`, 데모 UI 인라인 편집용) |
 | `GET` | `/api/all-qc` | 전체 QC (reviewed_at 내림차순) |
 
 ### AI Chat / 시스템
@@ -385,10 +394,15 @@ agenticCRM/
 │   │   └── openrouter_client.py
 │   └── main.py               # CLI 진입점
 ├── web/
-│   ├── app.py                # FastAPI 앱 & API 라우트 (개별/일괄 SSE, 전체 조회, CRUD, Chat)
+│   ├── app.py                # FastAPI 앱 & API 라우트 (개별/일괄 SSE, 전체 조회, CRUD, Chat, Activity PATCH)
 │   └── templates/
-│       ├── index.html        # 대시보드 (7개 탭 + AI Chat 사이드바)
-│       └── customer.html     # 고객 상세 (4개 섹션 카드)
+│       ├── index.html        # 대시보드 (7개 탭 + AI Chat 사이드바, 토글 가능 배지)
+│       └── customer.html     # 고객 상세 (4개 섹션 카드, 토글 가능 배지)
+├── docs/                     # 설계/계획 문서
+│   ├── NBA_APPROVAL_WORKFLOW_PLAN.md   # 정식 NBA 승인 워크플로우 설계
+│   └── AUTH_USER_MANAGEMENT_PLAN.md    # 인증·역할·권한 실행 계획
+├── manual/
+│   └── USER_MANUAL.md        # 사용자 매뉴얼
 ├── output/                   # 분석 보고서 (.gitignore)
 ├── crm.db                    # SQLite DB (.gitignore)
 ├── sample_c002_dislike_action_points.csv  # 불만 탐지 테스트 픽스처
