@@ -36,6 +36,7 @@ from agents.persona_agent import PersonaAgent
 from agents.nba_agent import NBAAgent
 from agents.activity_agent import ActivityAgent
 from agents.qc_agent import QCAgent
+from agents.revenue_intelligence_agent import RevenueIntelligenceAgent
 from agents.dislike_checker_agent import DislikeCheckerAgent
 from agents.chat_agent import ChatAgent
 
@@ -226,6 +227,9 @@ def run_single_agent(
         if agent_type == "persona":
             agent = PersonaAgent(model=model, provider=provider)
             agent.run(customer_id, since_date=since_date)
+        elif agent_type == "revenue":
+            agent = RevenueIntelligenceAgent(model=model, provider=provider)
+            agent.run(customer_id)
         elif agent_type == "nba":
             agent = NBAAgent(model=model, provider=provider)
             agent.run(customer_id, since_date=since_date)
@@ -256,6 +260,7 @@ def load_customer_results(customer_id: str) -> dict:
     return {
         "customer": customer,
         "persona": dt.get_persona(customer_id),
+        "revenue_intelligence": dt.get_revenue_intelligence(customer_id),
         "nba": dt.get_nba(customer_id),
         "activities": dt.get_activities(customer_id),
         "activities_updated_at": dt.get_activities_updated_at(customer_id),
@@ -863,6 +868,29 @@ async def api_all_qc():
     return qc_list
 
 
+@app.get("/api/revenue-intelligence/{customer_id}")
+async def api_revenue_intelligence(customer_id: str):
+    data = dt.get_revenue_intelligence(customer_id)
+    if not data:
+        return JSONResponse({"error": "revenue intelligence not found"}, status_code=404)
+    return data
+
+
+@app.get("/api/all-revenue-intelligence")
+async def api_all_revenue_intelligence():
+    """전체 고객 Revenue Intelligence 조회 (고객 정보 포함, 최신 분석일 내림차순)."""
+    items = dt.get_all_revenue_intelligence()
+    customers = {c["customer_id"]: c for c in dt.get_all_customers() if "customer_id" in c}
+    for item in items:
+        cid = item.get("customer_id")
+        if cid and cid in customers:
+            item["_company_name"] = customers[cid].get("company_name", cid)
+            item["_tier"] = customers[cid].get("tier", "")
+            item["_company_type"] = customers[cid].get("company_type", "")
+    items.sort(key=lambda x: x.get("generated_at") or x.get("analysis_date") or "", reverse=True)
+    return items
+
+
 class ActivityFieldUpdate(BaseModel):
     field: str   # "activity_status" | "nba_approval"
     status: str
@@ -1090,6 +1118,12 @@ async def api_run_persona(customer_id: str, force: bool = False):
     return _agent_sse(customer_id, "persona", since_date)
 
 
+@app.get("/api/run/revenue-intelligence/{customer_id}")
+async def api_run_revenue_intelligence(customer_id: str):
+    """Revenue Intelligence Agent 단독 실행. 기존 Persona/NBA/Activity/QC 파이프라인과 독립."""
+    return _agent_sse(customer_id, "revenue")
+
+
 @app.get("/api/run/nba/{customer_id}")
 async def api_run_nba(customer_id: str, force: bool = False):
     """NBA Agent 단독 실행 — 기본은 증분, force=true 시 전체 재생성"""
@@ -1190,6 +1224,94 @@ async def api_run_persona_all(force: bool = False):
             yield f'data: {json.dumps({"type": "error", "text": str(e)}, ensure_ascii=False)}\n\n'
         finally:
             running_set.discard("persona-all")
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+def _run_revenue_all_thread(customers: list, q: queue.Queue, model: str, provider: str) -> None:
+    """전체 고객 Revenue Intelligence를 순차 실행한다."""
+    total = len(customers)
+    for i, c in enumerate(customers, 1):
+        cid = c.get("customer_id", "")
+        name = c.get("company_name", cid)
+        try:
+            notes = dt.get_sales_notes(cid)
+            if not notes:
+                q.put({
+                    "type": "progress", "index": i, "total": total,
+                    "customer_id": cid, "company_name": name,
+                    "status": "skipped", "error": "sales notes 없음",
+                })
+                continue
+            q.put({"type": "progress", "index": i, "total": total, "customer_id": cid, "company_name": name, "status": "started"})
+            agent = RevenueIntelligenceAgent(model=model, provider=provider)
+            agent.run(cid)
+            q.put({"type": "progress", "index": i, "total": total, "customer_id": cid, "company_name": name, "status": "done"})
+        except Exception as exc:
+            import traceback; traceback.print_exc()
+            q.put({"type": "progress", "index": i, "total": total, "customer_id": cid, "company_name": name, "status": "error", "error": f"{type(exc).__name__}: {exc}"})
+    q.put(None)
+
+
+@app.get("/api/run/revenue-intelligence-all")
+async def api_run_revenue_intelligence_all():
+    """전체 고객 Revenue Intelligence 일괄 실행 (SSE)."""
+    if "revenue-all" in running_set:
+        async def _busy():
+            yield f'data: {json.dumps({"type": "error", "text": "이미 전체 Revenue Intelligence 업데이트가 진행 중입니다."})}\n\n'
+        return StreamingResponse(_busy(), media_type="text/event-stream")
+
+    customers = dt.get_all_customers() or []
+    if not customers:
+        async def _empty():
+            yield f'data: {json.dumps({"type": "error", "text": "고객이 없습니다."})}\n\n'
+        return StreamingResponse(_empty(), media_type="text/event-stream")
+
+    selected = _model_setting["model"]
+    meta = MODEL_REGISTRY.get(selected, MODEL_REGISTRY["claude-opus-4-6"])
+    provider = meta["provider"]
+
+    async def event_stream() -> AsyncGenerator[str, None]:
+        q: queue.Queue = queue.Queue()
+        running_set.add("revenue-all")
+        t = threading.Thread(
+            target=_run_revenue_all_thread,
+            args=(customers, q, selected, provider),
+            daemon=True,
+        )
+        t.start()
+
+        succeeded, failed, skipped = 0, 0, 0
+        try:
+            while True:
+                try:
+                    msg = q.get(timeout=0.1)
+                except queue.Empty:
+                    yield ": heartbeat\n\n"
+                    continue
+
+                if msg is None:
+                    ts = dt.now_kst_str("%Y-%m-%d %H:%M:%S")
+                    yield f'data: {json.dumps({"type": "done", "total": len(customers), "succeeded": succeeded, "failed": failed, "skipped": skipped, "completed_at": ts}, ensure_ascii=False)}\n\n'
+                    break
+
+                if isinstance(msg, dict) and msg.get("type") == "progress":
+                    status = msg.get("status")
+                    if status == "done":
+                        succeeded += 1
+                    elif status == "error":
+                        failed += 1
+                    elif status == "skipped":
+                        skipped += 1
+                    yield f'data: {json.dumps(msg, ensure_ascii=False)}\n\n'
+        except Exception as e:
+            yield f'data: {json.dumps({"type": "error", "text": str(e)}, ensure_ascii=False)}\n\n'
+        finally:
+            running_set.discard("revenue-all")
 
     return StreamingResponse(
         event_stream(),

@@ -187,6 +187,26 @@
   </div>
 
   <!-- ① Persona 섹션 -->
+  <div class="card section-card" id="section-revenue">
+    <div class="card-body p-4">
+      <div class="section-header">
+        <div>
+          <h5 class="mb-1 fw-bold"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Revenue Intelligence</h5>
+          <div class="section-status" id="status-revenue">
+            <span class="text-muted"><i class="bi bi-clock me-1"></i>아직 분석되지 않음</span>
+          </div>
+        </div>
+        <button id="btn-revenue" class="btn btn-outline-primary btn-sm" onclick="runAgent('revenue')">
+          <i class="bi bi-graph-up-arrow me-1"></i>RI 분석
+        </button>
+      </div>
+      <div id="log-revenue" class="log-area mb-3" style="display:none"></div>
+      <div class="section-content" id="content-revenue">
+        <div class="text-muted small py-2">Proxy signal 기반 매출 영향도와 서비스 기회 신호를 분석합니다.</div>
+      </div>
+    </div>
+  </div>
+
   <div class="card section-card" id="section-persona">
     <div class="card-body p-4">
       <div class="section-header">
@@ -463,6 +483,7 @@ function startFullAnalysis() {
 
 // ─── 개별 에이전트 실행 ────────────────────────────────────────────────────────
 const AGENT_CFG = {
+  revenue:  { endpoint: '/api/run/revenue-intelligence/', label: 'RI 분석', icon: 'bi-graph-up-arrow' },
   persona:  { endpoint: '/api/run/persona/',  label: 'Persona 업데이트', icon: 'bi-arrow-repeat' },
   nba:      { endpoint: '/api/run/nba/',      label: 'NBA 제안',         icon: 'bi-lightbulb' },
   activity: { endpoint: '/api/run/activity/', label: 'Activity 업데이트',icon: 'bi-calendar-plus' },
@@ -497,6 +518,7 @@ function runAgent(type) {
       // 해당 섹션만 갱신
       fetch('/api/customer/' + CUSTOMER_ID).then(r => r.json()).then(data => {
         if (type === 'persona')  renderPersona(data.persona);
+        if (type === 'revenue')  { renderRevenueIntelligence(data.revenue_intelligence); loadSalesNotes(); }
         if (type === 'nba')      renderNBA(data.nba);
         if (type === 'activity') renderActivity(data.activities, data.activities_updated_at);
         if (type === 'qc')       renderQC(data.qc);
@@ -523,6 +545,7 @@ async function loadAllResults() {
   try {
     const data = await fetch('/api/customer/' + CUSTOMER_ID).then(r => r.json());
     renderPersona(data.persona);
+    renderRevenueIntelligence(data.revenue_intelligence);
     renderNBA(data.nba);
     renderActivity(data.activities, data.activities_updated_at);
     renderQC(data.qc);
@@ -530,6 +553,86 @@ async function loadAllResults() {
 }
 
 // ─── Persona 렌더링 ───────────────────────────────────────────────────────────
+function renderRevenueIntelligence(ri) {
+  const el = document.getElementById('content-revenue');
+  const st = document.getElementById('status-revenue');
+  if (!el || !st) return;
+  if (!ri) {
+    el.innerHTML = '<div class="text-muted small py-2"><i class="bi bi-clock me-1"></i>아직 Revenue Intelligence 분석이 없습니다.</div>';
+    return;
+  }
+
+  const scores = ri.client_scores || {};
+  const riskCls = { low: 'success', medium: 'warning', high: 'danger' }[scores.retention_risk] || 'secondary';
+  const scoreBox = (label, value, cls) => `
+    <div class="col-md-4">
+      <div class="border rounded p-3 bg-light h-100">
+        <div class="small text-muted mb-1">${label}</div>
+        <div class="fs-4 fw-bold text-${cls || 'primary'}">${escHtml(value ?? 0)}</div>
+      </div>
+    </div>`;
+
+  if (ri.generated_at) {
+    st.innerHTML = `<span class="text-muted"><i class="bi bi-calendar-check me-1"></i>마지막 분석: ${escHtml(ri.generated_at)} · proxy mode</span>`;
+  }
+
+  const serviceMix = (ri.service_mix || []).map(s => `
+    <tr>
+      <td><span class="badge bg-primary-subtle text-primary border">${escHtml(s.service_type || '')}</span></td>
+      <td class="small">${escHtml(s.count ?? 0)}</td>
+      <td class="small fw-semibold">${escHtml(s.avg_score ?? 0)}</td>
+      <td class="small text-muted">${(s.evidence_note_ids || []).map(id => escHtml(id)).join(', ')}</td>
+    </tr>`).join('');
+
+  const signals = (ri.opportunity_signals || []).map(sig => `
+    <div class="action-item mb-2">
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+        <strong class="small">${escHtml(sig.signal || '')}</strong>
+        ${sig.strength ? `<span class="badge bg-secondary">${escHtml(sig.strength)}</span>` : ''}
+        ${sig.nba_candidate ? '<span class="badge bg-warning text-dark">NBA 후보</span>' : ''}
+      </div>
+      <div class="small text-muted mb-1">${escHtml(sig.recommended_action || '')}</div>
+      <div class="small"><span class="text-muted">Evidence:</span> ${(sig.evidence_note_ids || []).map(id => escHtml(id)).join(', ')}</div>
+    </div>`).join('');
+
+  const attribution = (ri.proxy_attribution || []).slice(0, 5).map(a => `
+    <tr>
+      <td class="small">${escHtml(a.note_id || '')}</td>
+      <td class="small">${escHtml(a.service_type || '')}</td>
+      <td class="small">${escHtml(a.attribution_weight ?? '')}</td>
+      <td class="small text-muted">${escHtml(a.reason || '')}</td>
+    </tr>`).join('');
+
+  el.innerHTML = `
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <span class="badge bg-light text-dark border">Proxy Mode</span>
+      ${ri.analysis_date ? `<span class="badge bg-light text-dark border">분석일 ${escHtml(ri.analysis_date)}</span>` : ''}
+      <span class="badge bg-${riskCls}">Retention Risk ${escHtml(scores.retention_risk || 'medium')}</span>
+    </div>
+    ${ri.summary ? `<div class="alert alert-info small mb-3">${escHtml(ri.summary)}</div>` : ''}
+    <div class="row g-3 mb-3">
+      ${scoreBox('Engagement Momentum', scores.engagement_momentum, 'primary')}
+      ${scoreBox('Wallet Influence Proxy', scores.wallet_influence_proxy, 'success')}
+      ${scoreBox('Service ROI Proxy', scores.service_roi_proxy, 'info')}
+    </div>
+    ${serviceMix ? `
+      <h6 class="fw-bold mb-2"><i class="bi bi-layers me-1 text-primary"></i>Service Mix</h6>
+      <div class="table-responsive mb-3"><table class="table table-sm table-hover">
+        <thead class="table-light"><tr><th>Service</th><th>Count</th><th>Avg Score</th><th>Evidence Notes</th></tr></thead>
+        <tbody>${serviceMix}</tbody>
+      </table></div>` : ''}
+    <h6 class="fw-bold mb-2"><i class="bi bi-stars me-1 text-warning"></i>Opportunity Signals</h6>
+    ${signals || '<div class="text-muted small mb-3">감지된 기회 신호가 없습니다.</div>'}
+    ${attribution ? `
+      <h6 class="fw-bold mb-2 mt-3"><i class="bi bi-diagram-2 me-1 text-secondary"></i>Proxy Attribution</h6>
+      <div class="table-responsive"><table class="table table-sm">
+        <thead class="table-light"><tr><th>Note</th><th>Service</th><th>Weight</th><th>Reason</th></tr></thead>
+        <tbody>${attribution}</tbody>
+      </table></div>` : ''}
+    ${(ri.limitations || []).length ? `<div class="alert alert-light border small mt-3 mb-0"><strong>Limitations:</strong> ${escHtml((ri.limitations || []).join(' '))}</div>` : ''}
+  `;
+}
+
 function renderPersona(p) {
   const el = document.getElementById('content-persona');
   const st = document.getElementById('status-persona');
@@ -972,6 +1075,11 @@ function renderSalesNotes(notes) {
     const interests = (n.expressed_interests || []).map(c => `<span class="tag-chip" style="color:#0d6efd">${escHtml(c)}</span>`).join('');
     const followUp  = n.follow_up_required
       ? '<span class="badge bg-warning text-dark ms-1" style="font-size:.7rem"><i class="bi bi-bell-fill me-1"></i>후속 조치</span>' : '';
+    const riTags = n.ri_tags || {};
+    const riScores = n.ri_scores || {};
+    const riBadge = riScores.revenue_proxy_score !== undefined
+      ? `<span class="badge bg-primary ms-1" style="font-size:.7rem"><i class="bi bi-graph-up-arrow me-1"></i>RI ${escHtml(riScores.revenue_proxy_score)}</span>` : '';
+    const serviceBadges = (riTags.service_types || []).slice(0, 3).map(t => `<span class="tag-chip" style="color:#0d6efd">${escHtml(t)}</span>`).join('');
     return `
       <div class="accordion-item border-0 mb-2 rounded shadow-sm overflow-hidden">
         <h2 class="accordion-header m-0">
@@ -983,6 +1091,7 @@ function renderSalesNotes(notes) {
               <strong class="small flex-grow-1">${escHtml(title.substring(0,60))}</strong>
               ${n.sentiment ? `<span class="note-sentiment ${sentimentClass(n.sentiment)}">${escHtml(n.sentiment)}</span>` : ''}
               ${followUp}
+              ${riBadge}
               <span class="text-muted small">${escHtml(n.Sales_Name || n.author || '')}</span>
             </div>
           </button>
@@ -1068,6 +1177,7 @@ window.addEventListener('DOMContentLoaded', function() {
     .then(data => {
       if (!data) return;
       if (data.persona)    renderPersona(data.persona);
+      if (data.revenue_intelligence) renderRevenueIntelligence(data.revenue_intelligence);
       if (data.nba)        renderNBA(data.nba);
       if (data.activities) renderActivity(data.activities, data.activities_updated_at);
       if (data.qc)         renderQC(data.qc);

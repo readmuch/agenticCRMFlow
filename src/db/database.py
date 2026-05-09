@@ -53,6 +53,12 @@ class QCReport(Base):
     data = Column(JSON, nullable=False)
 
 
+class RevenueIntelligence(Base):
+    __tablename__ = "revenue_intelligence"
+    customer_id = Column(String, primary_key=True)
+    data = Column(JSON, nullable=False)
+
+
 class SalesNote(Base):
     __tablename__ = "sales_notes"
     note_id    = Column(String, primary_key=True)

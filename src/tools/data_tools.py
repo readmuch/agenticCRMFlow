@@ -184,6 +184,7 @@ def delete_customers(customer_ids: list[str]) -> dict:
     반환: {"deleted": N, "missing": [...]}"""
     from db.database import (
         Customer, SalesNote, Persona, NBAResult, ActivitySchedule, QCReport,
+        RevenueIntelligence,
     )
     ids = [cid for cid in (customer_ids or []) if cid]
     if not ids:
@@ -202,6 +203,7 @@ def delete_customers(customer_ids: list[str]) -> dict:
             session.query(NBAResult).filter_by(customer_id=cid).delete()
             session.query(ActivitySchedule).filter_by(customer_id=cid).delete()
             session.query(QCReport).filter_by(customer_id=cid).delete()
+            session.query(RevenueIntelligence).filter_by(customer_id=cid).delete()
             session.delete(row)
             deleted += 1
         session.commit()
@@ -642,6 +644,52 @@ def get_all_qc_reports() -> list:
 
 # ─── 전체 컨텍스트 조합 ───────────────────────────────────────────────────────
 
+# ─── Revenue Intelligence 관리(DB) ─────────────────────────────────────────
+
+def save_revenue_intelligence(customer_id: str, revenue_data: dict) -> None:
+    from db.database import RevenueIntelligence, flag_modified
+    revenue_data["customer_id"] = customer_id
+    revenue_data["generated_at"] = now_kst_str()
+    revenue_data.setdefault("proxy_mode", True)
+    with _session() as session:
+        existing = session.query(RevenueIntelligence).filter_by(customer_id=customer_id).first()
+        if existing:
+            existing.data = revenue_data
+            flag_modified(existing, "data")
+        else:
+            session.add(RevenueIntelligence(customer_id=customer_id, data=revenue_data))
+        session.commit()
+
+
+def get_revenue_intelligence(customer_id: str) -> dict | None:
+    try:
+        from db.database import RevenueIntelligence
+        with _session() as session:
+            row = session.query(RevenueIntelligence).filter_by(customer_id=customer_id).first()
+            return row.data if row else None
+    except Exception:
+        return None
+
+
+def get_all_revenue_intelligence() -> list:
+    try:
+        from db.database import RevenueIntelligence
+        with _session() as session:
+            return [row.data for row in session.query(RevenueIntelligence).all()]
+    except Exception:
+        return []
+
+
+def update_note_revenue_intelligence(note_id: str, ri_tags: dict = None, ri_scores: dict = None) -> dict | None:
+    """sales_notes.data에 note-level Revenue Intelligence 메타를 저장한다."""
+    payload = {
+        "ri_tags": ri_tags or {},
+        "ri_scores": ri_scores or {},
+        "ri_tagged_at": now_kst_str(),
+    }
+    return update_sales_note(note_id, payload)
+
+
 def get_recent_notes_with_weights(customer_id: str, analysis_date: str = None, months: int = 3, since_date: str = None) -> dict:
     """분석일 기준 최근 N개월 세일즈 노트를 로드하고 recency_weight 부여.
     since_date(YYYY-MM-DD)가 지정되면 해당 날짜 이후 노트만 포함 (months 기반 cutoff 대체).
@@ -764,6 +812,7 @@ def build_full_context(customer_id: str) -> dict:
     return {
         **build_raw_context(customer_id),
         "persona": get_persona(customer_id),
+        "revenue_intelligence": get_revenue_intelligence(customer_id),
         "nba": get_nba(customer_id),
         "activities": get_activities(customer_id),
         "qc_report": get_qc_report(customer_id),
